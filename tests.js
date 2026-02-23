@@ -61,6 +61,7 @@ function makeCar(dirKey, posAlongAxis, opts = {}) {
     vehicleWidth: 1.8,
     cleared: false,
     waitTime: 0,
+    accelTimer: opts.accelTimer !== undefined ? opts.accelTimer : 1,
     distanceFromCenter: Math.abs(isNS ? pos.z : pos.x),
     mesh: { position: pos, rotation: { z: 0 } }
   };
@@ -81,8 +82,17 @@ function updateSingleCar(car, cars, signalState, dt) {
   let scored = false;
 
   if (car.state === 'moving' || car.state === 'through') {
-    let moveAmount = car.speed * dt;
+    const ACCEL_DURATION = 0.5;
+    if (car.accelTimer < ACCEL_DURATION) car.accelTimer += dt;
+    const accelFactor = Math.min(1, car.accelTimer / ACCEL_DURATION);
+    let moveAmount = car.speed * accelFactor * dt;
     let atStopLine = false;
+
+    // Point of no return: if car's front bumper is past the stop line, commit to crossing
+    const PNR_DIST = STOP_LINE_DIST - 1;
+    if (car.state === 'moving' && distFromCenter < PNR_DIST + vLen / 2) {
+      car.state = 'through';
+    }
 
     // BLOCK 1: Stop line — front bumper at STOP_LINE_DIST
     if (shouldStop && car.state !== 'through') {
@@ -151,6 +161,7 @@ function updateSingleCar(car, cars, signalState, dt) {
   } else if (car.state === 'waiting') {
     if (!shouldStop) {
       car.state = 'moving';
+      car.accelTimer = 0;
       car.waitTime = 0;
       car.mesh.rotation.z = 0;
     } else {
@@ -338,7 +349,7 @@ test('Cars resume when signal changes', () => {
   assert(car.state !== 'waiting', `Car should resume, state is ${car.state}`);
 
   // Should move toward center
-  simulate(cars, SIGNAL_STATES.NS_GO, 300);
+  simulate(cars, SIGNAL_STATES.NS_GO, 400);
   const pos = getPos(car);
   assert(Math.abs(pos) > 30 || car.cleared, 'Car should have moved significantly or exited');
 });
@@ -1138,6 +1149,73 @@ test('Car at spawn point exits map on green in reasonable time', () => {
   simulate(cars, SIGNAL_STATES.ALL_GO, 1200);
 
   assert(car.cleared, 'Car should exit map in reasonable time');
+});
+
+// ============================================================
+// Point of no return & slow-start tests
+// ============================================================
+
+test('Car past point of no return transitions to through', () => {
+  // Place car just inside PNR zone (STOP_LINE_DIST - 1 + vLen/2)
+  // PNR_DIST = STOP_LINE_DIST - 1 = 8.5, threshold = 8.5 + 1.6 = 10.1
+  // Car center at 10.0 → distFromCenter = 10.0 < 10.1 → should become through
+  const car = makeCar('NORTH', -10.0, { speed: 8 });
+  const cars = [car];
+  simulate(cars, SIGNAL_STATES.ALL_STOP, 1);
+  assert(car.state === 'through', 'Car past PNR should be through, not stopped');
+});
+
+test('Car before point of no return still stops on red', () => {
+  // Car at 12.0 → distFromCenter = 12.0 > 10.1 → should stop normally
+  const car = makeCar('NORTH', -12.0, { speed: 8 });
+  const cars = [car];
+  simulate(cars, SIGNAL_STATES.ALL_STOP, 120);
+  assert(car.state === 'waiting', 'Car before PNR should stop at red');
+});
+
+test('Slow start — car resuming from waiting starts slow', () => {
+  // Place car at stop line so it waits
+  const stopPos = -1 * (STOP_LINE_DIST + CAR_LENGTH / 2);
+  const car = makeCar('NORTH', stopPos, { state: 'waiting', speed: 8, accelTimer: 0 });
+  const cars = [car];
+
+  // Resume by changing signal
+  updateSingleCar(car, cars, SIGNAL_STATES.ALL_GO, 1/60);
+  assert(car.state === 'moving', 'Car should resume on green');
+  assert(car.accelTimer === 0, 'accelTimer should reset to 0 on resume');
+
+  // First frame of movement — accelTimer starts at 0, so movement is minimal
+  const posBefore = getPos(car);
+  updateSingleCar(car, cars, SIGNAL_STATES.ALL_GO, 1/60);
+  const moveFirst = Math.abs(getPos(car) - posBefore);
+
+  // Advance to full speed (past 0.5s)
+  for (let i = 0; i < 60; i++) {
+    updateSingleCar(car, cars, SIGNAL_STATES.ALL_GO, 1/60);
+  }
+  const posBeforeFull = getPos(car);
+  updateSingleCar(car, cars, SIGNAL_STATES.ALL_GO, 1/60);
+  const moveFull = Math.abs(getPos(car) - posBeforeFull);
+
+  assert(moveFirst < moveFull, 'First frame movement should be less than full-speed movement');
+});
+
+test('Through car cannot be recalled by signal change — all directions', () => {
+  for (const dirKey of ['NORTH', 'SOUTH', 'EAST', 'WEST']) {
+    const dir = DIRECTIONS[dirKey];
+    const pos = dir.sign * 3; // inside intersection
+    const car = makeCar(dirKey, pos, { state: 'through', speed: 8 });
+    const cars = [car];
+
+    // Try to stop with ALL_STOP
+    simulate(cars, SIGNAL_STATES.ALL_STOP, 30);
+    assert(car.state === 'through', `Through car (${dirKey}) should not be recalled`);
+
+    // Car should have moved
+    const newPos = getPos(car);
+    const moved = (newPos - pos) * (-dir.sign);
+    assert(moved > 0, `Through car (${dirKey}) should keep moving`);
+  }
 });
 
 // ============================================================
