@@ -92,6 +92,94 @@
     50% { transform: scale(1.06); opacity: 1; }
   }
 
+  /* ===== START SCREEN REDESIGN ===== */
+  #startScreen {
+    background: linear-gradient(135deg, rgba(0,0,0,0.92) 0%, rgba(10,20,40,0.95) 100%);
+    overflow-y: auto;
+  }
+  #startScreen .start-container {
+    max-width: 700px; width: 90%; padding: 30px 0;
+  }
+  #startScreen .logo-area {
+    text-align: center; margin-bottom: 10px;
+  }
+  #startScreen .logo-area h1 {
+    font-size: 56px; margin-bottom: 4px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; filter: drop-shadow(0 0 20px rgba(255,215,0,0.4));
+  }
+  #startScreen .logo-area .tagline {
+    color: #ccc; font-size: 20px; font-weight: 500; margin-bottom: 8px;
+  }
+  #startScreen .local-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.35);
+    padding: 8px 20px; border-radius: 20px; margin: 12px 0 20px;
+    color: #2ecc71; font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  #startScreen .local-badge .lock-icon {
+    font-size: 16px;
+  }
+  #startScreen .features-row {
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 16px 0 24px;
+  }
+  #startScreen .feature-card {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 14px 16px; flex: 1; min-width: 140px; max-width: 200px;
+    text-align: center; transition: border-color 0.3s, background 0.3s;
+  }
+  #startScreen .feature-card:hover {
+    border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.05);
+  }
+  #startScreen .feature-card .feat-icon { font-size: 28px; margin-bottom: 6px; }
+  #startScreen .feature-card .feat-title { color: #fff; font-size: 13px; font-weight: 700; }
+  #startScreen .feature-card .feat-desc { color: #999; font-size: 11px; margin-top: 3px; line-height: 1.4; }
+
+  #startScreen .how-to-play {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 18px 24px; margin: 0 0 20px; width: 100%;
+  }
+  #startScreen .how-to-play h3 {
+    color: #FFD700; font-size: 16px; margin-bottom: 12px; text-align: center;
+    text-transform: uppercase; letter-spacing: 2px;
+  }
+  #startScreen .gesture-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  #startScreen .gesture-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px; border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+  }
+  #startScreen .gesture-item .gi-icon {
+    font-size: 28px; width: 40px; text-align: center; flex-shrink: 0;
+  }
+  #startScreen .gesture-item .gi-text {
+    text-align: left;
+  }
+  #startScreen .gesture-item .gi-action {
+    color: #fff; font-size: 13px; font-weight: 600;
+  }
+  #startScreen .gesture-item .gi-result {
+    color: #aaa; font-size: 11px;
+  }
+
+  #startScreen .start-section {
+    text-align: center; margin-top: 10px;
+  }
+  #startScreen .privacy-note {
+    display: flex; flex-direction: column; gap: 4px;
+    align-items: center; margin-top: 18px;
+  }
+  #startScreen .privacy-note span {
+    color: #666; font-size: 12px; line-height: 1.5;
+  }
+  #startScreen .keyboard-note {
+    color: #555; font-size: 12px; margin-top: 10px;
+  }
+  #startScreen .keyboard-note b { color: #888; }
+
   /* Progress ring for gesture hold */
   .hold-ring {
     width: 80px; height: 80px; margin: 14px auto 0; position: relative;
@@ -136,6 +224,110 @@
     from { transform: scale(1); }
     to { transform: scale(1.05); }
   }
+
+  /* Wave announcement banner */
+  #waveAnnounce {
+    position: fixed; top: 50%; left: 50%; z-index: 160;
+    transform: translate(-50%, -50%) scale(0);
+    pointer-events: none; text-align: center;
+    opacity: 0; transition: none;
+  }
+  #waveAnnounce .wa-wave {
+    font-size: 52px; font-weight: 900; color: #FFD700;
+    text-shadow: 3px 3px 0 #b8860b, 0 0 30px rgba(255,215,0,0.5);
+    letter-spacing: 2px;
+  }
+  #waveAnnounce .wa-name {
+    font-size: 22px; color: #fff; margin-top: 4px;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+    font-style: italic;
+  }
+  #waveAnnounce .wa-tip {
+    font-size: 14px; color: #aaa; margin-top: 8px;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+  }
+  #waveAnnounce.show {
+    animation: waveBounceIn 0.5s ease-out forwards;
+  }
+  #waveAnnounce.hide {
+    animation: waveFadeOut 0.4s ease-in forwards;
+  }
+  @keyframes waveBounceIn {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+    60% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes waveFadeOut {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.6) translateY(-30px); }
+  }
+
+  /* Weather overlay */
+  #weatherCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 90; pointer-events: none;
+  }
+
+  /* ===== GAME OVER SCREEN ===== */
+  #gameOverScreen {
+    background: transparent !important;
+    justify-content: flex-end !important;
+    pointer-events: none;
+  }
+  #gameOverScreen > * { pointer-events: auto; }
+  .gameover-container {
+    max-width: 100%; width: 100%; text-align: center;
+    background: rgba(0,0,0,0.75);
+    padding: 10px 28px 14px;
+    margin-bottom: 0;
+    max-height: 15vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  #gameOverScreen h1 {
+    font-size: 28px; margin: 0;
+  }
+  .go-reason {
+    color: #ff8888 !important; font-size: 13px !important; margin: 0 !important;
+  }
+  .go-score-area {
+    margin: 0; display: flex; align-items: center; gap: 8px;
+  }
+  .go-score-label {
+    color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+  }
+  .go-score-area .score-final {
+    font-size: 32px; margin: 0;
+  }
+  .new-hs-badge {
+    color: #FFD700; font-size: 14px; font-weight: 700;
+    animation: gesturePulse 1s ease-in-out infinite;
+  }
+  .go-stats {
+    display: flex; gap: 12px; justify-content: center; margin: 0;
+  }
+  .go-stat {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; padding: 4px 12px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .go-stat-val {
+    color: #fff; font-size: 18px; font-weight: 800;
+  }
+  .go-stat-label {
+    color: #888; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;
+  }
+  .go-restart {
+    margin: 0; display: flex; align-items: center; gap: 8px;
+  }
+  .go-restart .keyboard-note {
+    color: #555; font-size: 12px; margin: 0;
+  }
+  .go-restart .keyboard-note b { color: #888; }
 </style>
 </head>
 <body>
@@ -157,6 +349,16 @@
   <div id="gestureLabel">Detecting...</div>
 </div>
 
+<!-- Wave Announcement -->
+<div id="waveAnnounce">
+  <div class="wa-wave"></div>
+  <div class="wa-name"></div>
+  <div class="wa-tip"></div>
+</div>
+
+<!-- Weather Overlay -->
+<canvas id="weatherCanvas"></canvas>
+
 <!-- Crash Flash -->
 <div id="crashFlash"></div>
 
@@ -167,15 +369,95 @@
 
 <!-- Start Screen -->
 <div id="startScreen" class="overlay">
-  <h1>🚦 Traffic Cop 3D</h1>
-  <h2>Direct Traffic with Your Hands!</h2>
-  <p>You're a traffic cop at a busy four-way intersection.<br>Control everything with hand gestures — no clicking needed!</p>
-  <div class="gesture-prompt" id="startGesturePrompt">✋ Raise BOTH hands to begin ✋</div>
-  <div class="hold-ring" id="startHoldRing">
-    <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="36"/><circle class="fg" id="startRingFg" cx="40" cy="40" r="36"/></svg>
-    <div class="label">Hold</div>
+  <div class="start-container">
+
+    <!-- Logo & Title -->
+    <div class="logo-area">
+      <h1>🚦 Traffic Cop 3D</h1>
+      <div class="tagline">Direct Traffic with Your Hands</div>
+      <div class="local-badge">
+        <span class="lock-icon">🔒</span>
+        100% Local in Your Browser &mdash; Nothing Uploaded, Ever
+      </div>
+    </div>
+
+    <!-- Feature Cards -->
+    <div class="features-row">
+      <div class="feature-card">
+        <div class="feat-icon">📷</div>
+        <div class="feat-title">Webcam Gestures</div>
+        <div class="feat-desc">Control traffic with hand signals detected by your camera</div>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🏙️</div>
+        <div class="feat-title">3D Intersection</div>
+        <div class="feat-desc">Cars, buses &amp; pedestrians in a 3D world</div>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🔒</div>
+        <div class="feat-title">Fully Private</div>
+        <div class="feat-desc">All AI runs locally via MediaPipe &mdash; zero server calls</div>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title">No Install</div>
+        <div class="feat-desc">Opens right in your browser &mdash; nothing to download</div>
+      </div>
+    </div>
+
+    <!-- How to Play -->
+    <div class="how-to-play">
+      <h3>🎮 How to Play</h3>
+      <div class="gesture-grid">
+        <div class="gesture-item">
+          <div class="gi-icon">🤚</div>
+          <div class="gi-text">
+            <div class="gi-action">Hand on LEFT</div>
+            <div class="gi-result">East ↔ West traffic flows</div>
+          </div>
+        </div>
+        <div class="gesture-item">
+          <div class="gi-icon">✋</div>
+          <div class="gi-text">
+            <div class="gi-action">Hand on RIGHT</div>
+            <div class="gi-result">North ↔ South traffic flows</div>
+          </div>
+        </div>
+        <div class="gesture-item">
+          <div class="gi-icon">🙌</div>
+          <div class="gi-text">
+            <div class="gi-action">Both Hands Up</div>
+            <div class="gi-result">ALL traffic stops</div>
+          </div>
+        </div>
+        <div class="gesture-item">
+          <div class="gi-icon">😴</div>
+          <div class="gi-text">
+            <div class="gi-action">No Hands</div>
+            <div class="gi-result">All traffic flows freely</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start actions -->
+    <div class="start-section">
+      <div class="gesture-prompt" id="startGesturePrompt">✋ Raise BOTH hands to begin ✋</div>
+      <div class="hold-ring" id="startHoldRing">
+        <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="36"/><circle class="fg" id="startRingFg" cx="40" cy="40" r="36"/></svg>
+        <div class="label">Hold</div>
+      </div>
+      <p class="keyboard-note">or press <b>SPACE</b> to start &nbsp;|&nbsp; Keyboard: <b>A</b>=E/W &nbsp;<b>D</b>=N/S &nbsp;<b>S</b>=Stop &nbsp;<b>W</b>=All Go</p>
+    </div>
+
+    <!-- Privacy footer -->
+    <div class="privacy-note">
+      <span>📷 Camera is used only for hand detection &mdash; video never leaves your device</span>
+      <span>🧠 MediaPipe AI model runs entirely in your browser &mdash; no cloud processing</span>
+      <span>💾 Only your high score is saved (localStorage)</span>
+    </div>
+
   </div>
-  <p style="margin-top:14px; font-size:14px; color:#777">or press <b>SPACE</b></p>
 </div>
 
 <!-- Tutorial Screen -->
@@ -185,23 +467,18 @@
   <div id="webcamLarge"><video id="webcamTutorial" autoplay playsinline></video><div class="detect-label" id="tutDetectLabel">Waiting for camera...</div></div>
   <div id="tutStep1" class="tut-step active">
     <div class="icon">🤚</div>
-    <div class="info"><div class="title">Raise LEFT hand only</div><div class="desc">Lets East ↔ West traffic flow</div></div>
+    <div class="info"><div class="title">Put hand on LEFT side</div><div class="desc">Lets East ↔ West traffic flow</div></div>
     <div class="check" id="tutCheck1">⬜</div>
   </div>
   <div id="tutStep2" class="tut-step">
     <div class="icon">✋</div>
-    <div class="info"><div class="title">Raise RIGHT hand only</div><div class="desc">Lets North ↔ South traffic flow</div></div>
+    <div class="info"><div class="title">Put hand on RIGHT side</div><div class="desc">Lets North ↔ South traffic flow</div></div>
     <div class="check" id="tutCheck2">⬜</div>
   </div>
   <div id="tutStep3" class="tut-step">
     <div class="icon">🙌</div>
     <div class="info"><div class="title">Raise BOTH hands</div><div class="desc">ALL traffic STOPS</div></div>
     <div class="check" id="tutCheck3">⬜</div>
-  </div>
-  <div id="tutStep4" class="tut-step">
-    <div class="icon">✊</div>
-    <div class="info"><div class="title">Show a FIST (left or right)</div><div class="desc">Turns your cop to face another road</div></div>
-    <div class="check" id="tutCheck4">⬜</div>
   </div>
   <div class="hold-ring" id="tutHoldRing" style="display:none">
     <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="36"/><circle class="fg" id="tutRingFg" cx="40" cy="40" r="36"/></svg>
@@ -212,17 +489,24 @@
 
 <!-- Game Over Screen -->
 <div id="gameOverScreen" class="overlay hidden">
-  <h1 id="gameOverTitle">💥 CRASH!</h1>
-  <h2>Game Over</h2>
-  <div class="score-final" id="finalScore">0</div>
-  <div class="high-score" id="highScore">High Score: 0</div>
-  <p id="gameOverReason">Two cars collided at the intersection!</p>
-  <div class="gesture-prompt">✋ Raise BOTH hands to play again ✋</div>
-  <div class="hold-ring" id="restartHoldRing">
-    <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="36"/><circle class="fg" id="restartRingFg" cx="40" cy="40" r="36"/></svg>
-    <div class="label">Hold</div>
+  <div class="gameover-container">
+    <h1 id="gameOverTitle">💥 CRASH!</h1>
+    <p id="gameOverReason" class="go-reason">Two cars collided!</p>
+    <div class="go-score-area">
+      <div class="go-score-label">SCORE</div>
+      <div class="score-final" id="finalScore">0</div>
+      <div id="newHighScoreBadge" class="new-hs-badge hidden">🏆 NEW HIGH!</div>
+    </div>
+    <div class="go-stats">
+      <div class="go-stat"><span class="go-stat-val" id="goWave">1</span><span class="go-stat-label">Wave</span></div>
+      <div class="go-stat"><span class="go-stat-val" id="goCleared">0</span><span class="go-stat-label">Cleared</span></div>
+      <div class="go-stat"><span class="go-stat-val" id="goTime">0s</span><span class="go-stat-label">Time</span></div>
+    </div>
+    <div class="go-restart">
+      <span class="gesture-prompt" style="font-size:13px">✋ Both hands ✋</span>
+      <p class="keyboard-note">or <b>SPACE</b></p>
+    </div>
   </div>
-  <p style="margin-top:10px; font-size:14px; color:#777">or press <b>SPACE</b></p>
 </div>
 
 <!-- Keyboard hint -->
@@ -253,7 +537,8 @@ const INTERSECTION_SIZE = ROAD_WIDTH;
 const CAR_LENGTH = 3.2;
 const CAR_WIDTH = 1.8;
 const CAR_HEIGHT = 1.4;
-const STOP_LINE_DIST = 7;  // distance from center where cars stop
+const STOP_LINE_DIST = 9.5;  // distance from center where front bumper stops
+const CROSSWALK_DIST = STOP_LINE_DIST - 2.5; // center of crosswalk zone (7.0)
 const SPAWN_DIST = 55;     // distance from center where cars spawn
 const EXIT_DIST = 60;      // distance from center where cars are removed
 const LANE_OFFSET = 2.2;   // offset from center line for each lane direction
@@ -293,22 +578,31 @@ let signalDebounceTimer = 0;
 let pendingSignal = SIGNAL_STATES.ALL_GO;
 let spawnTimer = 0;
 let difficultyTimer = 0;
-let spawnInterval = 3.0;    // seconds between spawns
-let carSpeed = 8;           // units per second
+let spawnInterval = 4.0;    // seconds between spawns (easy start)
+let carSpeed = 6;           // units per second (slower start)
 let maxCarsPerSpawn = 1;
 let impatienceChance = 0;
+
+// Weather state
+let weatherType = 'clear'; // 'clear', 'rain', 'snow'
+let weatherParticles = [];
+let weatherCanvas, weatherCtx;
+let weatherIntensity = 0; // 0-1
 let gestureActive = false;  // whether hand tracking is running
 let intersectionGroup;
 let signalMarkers = {};     // visual stop/go indicators
 let copModel;
 let copLeftArm, copRightArm;
 let highScoreValue = parseInt(localStorage.getItem('trafficCopHighScore') || '0');
+let gameOverTimeout = null;
+let crashDebris = [];       // persistent crash markers to clean up on reset
 
-// Emergency vehicle state
-let emergencyTimer = 0;
-let emergencyInterval = 25; // seconds before first emergency vehicle
-let emergencyActive = false; // is there currently an emergency vehicle on screen?
-let emergencyWarningEl = null; // HUD element
+// (Emergency vehicles removed for simpler gameplay)
+
+// Honking state
+let honkTimer = 0;
+let honkInterval = 2.5; // seconds between potential honks
+let nearMissFlashTimer = 0; // for near-miss visual feedback
 
 // Gesture-driven UI state
 let appPhase = 'start'; // 'start', 'tutorial', 'playing', 'gameover'
@@ -337,20 +631,16 @@ function ensureAudio() {
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
-function playWhistle() {
-  ensureAudio();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-  osc.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.15);
-  osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.3);
-  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-  gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.35);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 0.35);
+function playWhistle(long) {
+  // Sound removed
+}
+
+function playHonk() {
+  // Sound removed
+}
+
+function playAngryHonk() {
+  // Sound removed
 }
 
 function playCrash() {
@@ -604,40 +894,59 @@ function buildIntersection() {
     intersectionGroup.add(dashMesh);
   }
 
-  // Merge crosswalk stripes
+  // Merge crosswalk stripes — proper zebra crossing pattern
   const crossGeos = [];
-  const crossMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
-  const addCrosswalkGeos = (cx, cz, isNS) => {
-    for (let s = -2; s <= 2; s += 1) {
-      const g = new THREE.PlaneGeometry(isNS ? 1 : 0.5, isNS ? 0.5 : 1);
+  const crossMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+  const stripeW = 0.9;   // width of each stripe along the road
+  const stripeGap = 0.6; // gap between stripes
+  const crossSpan = 2.2; // total depth of crosswalk zone along main axis
+  const halfRoadW = ROAD_WIDTH / 2;
+  ['NORTH', 'SOUTH', 'EAST', 'WEST'].forEach(dirKey => {
+    const d = DIRECTIONS[dirKey];
+    const isNS = d.axis === 'z';
+    // Zebra stripes perpendicular to traffic flow
+    for (let offset = -halfRoadW + stripeW / 2 + 0.3; offset < halfRoadW - 0.3; offset += stripeW + stripeGap) {
+      const g = new THREE.PlaneGeometry(
+        isNS ? stripeW : crossSpan,
+        isNS ? crossSpan : stripeW
+      );
       g.rotateX(-Math.PI / 2);
-      g.translate(cx + (isNS ? s * 1.5 : 0), 0.025, cz + (isNS ? 0 : s * 1.5));
+      const mainPos = d.sign * CROSSWALK_DIST;
+      if (isNS) g.translate(offset, 0.026, mainPos);
+      else g.translate(mainPos, 0.026, offset);
       crossGeos.push(g);
     }
-  };
-  addCrosswalkGeos(0, STOP_LINE_DIST + 1.2, true);
-  addCrosswalkGeos(0, -STOP_LINE_DIST - 1.2, true);
-  addCrosswalkGeos(STOP_LINE_DIST + 1.2, 0, false);
-  addCrosswalkGeos(-STOP_LINE_DIST - 1.2, 0, false);
+    // Border lines on each edge of crosswalk
+    for (const edgeOff of [-crossSpan / 2, crossSpan / 2]) {
+      const borderG = new THREE.PlaneGeometry(
+        isNS ? ROAD_WIDTH : 0.15,
+        isNS ? 0.15 : ROAD_WIDTH
+      );
+      borderG.rotateX(-Math.PI / 2);
+      const bPos = d.sign * CROSSWALK_DIST + (isNS ? 0 : edgeOff);
+      if (isNS) borderG.translate(0, 0.027, d.sign * CROSSWALK_DIST + edgeOff);
+      else borderG.translate(d.sign * CROSSWALK_DIST + edgeOff, 0.027, 0);
+      crossGeos.push(borderG);
+    }
+  });
   if (crossGeos.length) {
     intersectionGroup.add(new THREE.Mesh(mergeGeometries(crossGeos), crossMat));
   }
 
-  // Merge stop lines
+  // Merge stop lines (one per direction, at car stop position)
   const stopGeos = [];
-  const addStopGeo = (x, z, label) => {
-    const isNS = label === 'NORTH' || label === 'SOUTH';
-    const offset = isNS ? (label === 'NORTH' ? -LANE_OFFSET : LANE_OFFSET) : (label === 'EAST' ? LANE_OFFSET : -LANE_OFFSET);
-    const g = new THREE.PlaneGeometry(isNS ? ROAD_WIDTH * 0.45 : 0.4, isNS ? 0.4 : ROAD_WIDTH * 0.45);
+  ['NORTH', 'SOUTH', 'EAST', 'WEST'].forEach(dirKey => {
+    const d = DIRECTIONS[dirKey];
+    const isNS = d.axis === 'z';
+    const g = new THREE.PlaneGeometry(
+      isNS ? ROAD_WIDTH * 0.48 : 0.5,
+      isNS ? 0.5 : ROAD_WIDTH * 0.48
+    );
     g.rotateX(-Math.PI / 2);
-    if (isNS) g.translate(offset, 0.02, z);
-    else g.translate(x, 0.02, offset);
+    if (isNS) g.translate(d.laneOffset, 0.025, d.sign * STOP_LINE_DIST);
+    else g.translate(d.sign * STOP_LINE_DIST, 0.025, d.laneOffset);
     stopGeos.push(g);
-  };
-  addStopGeo(0, STOP_LINE_DIST, 'NORTH');
-  addStopGeo(0, -STOP_LINE_DIST, 'SOUTH');
-  addStopGeo(STOP_LINE_DIST, 0, 'WEST');
-  addStopGeo(-STOP_LINE_DIST, 0, 'EAST');
+  });
   if (stopGeos.length) {
     intersectionGroup.add(new THREE.Mesh(mergeGeometries(stopGeos), crossMat));
   }
@@ -863,21 +1172,42 @@ function buildBuildings() {
   ];
 
   const positions = [
+    // NE quadrant
     { x: 16, z: -16, w: 9, h: 14, d: 9 },
     { x: 28, z: -15, w: 7, h: 9, d: 11 },
     { x: 17, z: -30, w: 11, h: 18, d: 7 },
     { x: 30, z: -30, w: 8, h: 11, d: 8 },
+    { x: 40, z: -16, w: 6, h: 7, d: 8 },
+    { x: 42, z: -30, w: 7, h: 15, d: 6 },
+    { x: 17, z: -44, w: 8, h: 10, d: 7 },
+    { x: 30, z: -43, w: 9, h: 20, d: 8 },
+    // NW quadrant
     { x: -16, z: -16, w: 9, h: 11, d: 9 },
     { x: -28, z: -19, w: 8, h: 16, d: 8 },
     { x: -19, z: -32, w: 11, h: 10, d: 9 },
     { x: -32, z: -32, w: 7, h: 13, d: 7 },
+    { x: -40, z: -17, w: 6, h: 8, d: 9 },
+    { x: -42, z: -32, w: 7, h: 22, d: 7 },
+    { x: -18, z: -46, w: 9, h: 12, d: 6 },
+    { x: -34, z: -45, w: 8, h: 9, d: 8 },
+    // SE quadrant
     { x: 16, z: 16, w: 9, h: 12, d: 9 },
     { x: 30, z: 17, w: 8, h: 8, d: 10 },
     { x: 16, z: 30, w: 10, h: 15, d: 8 },
+    { x: 40, z: 17, w: 6, h: 10, d: 7 },
+    { x: 30, z: 32, w: 7, h: 6, d: 9 },
+    { x: 42, z: 32, w: 6, h: 17, d: 7 },
+    { x: 17, z: 44, w: 8, h: 11, d: 7 },
+    { x: 32, z: 45, w: 9, h: 14, d: 8 },
+    // SW quadrant
     { x: -16, z: 16, w: 9, h: 10, d: 9 },
     { x: -27, z: 18, w: 7, h: 17, d: 9 },
     { x: -18, z: 30, w: 11, h: 9, d: 7 },
-    { x: -30, z: 30, w: 8, h: 12, d: 8 }
+    { x: -30, z: 30, w: 8, h: 12, d: 8 },
+    { x: -40, z: 16, w: 6, h: 7, d: 8 },
+    { x: -42, z: 30, w: 7, h: 19, d: 7 },
+    { x: -17, z: 44, w: 8, h: 13, d: 7 },
+    { x: -32, z: 44, w: 9, h: 8, d: 8 }
   ];
 
   // Bake windows into building face textures to eliminate per-window meshes
@@ -1736,7 +2066,9 @@ function createVehicle(directionKey, forceType) {
     vehicleWidth: W,
     vehicleType: vt.name,
     isPedestrian: false,
-    isEmergency: !!forceType
+    isEmergency: !!forceType,
+    waitTime: 0,
+    brakeLightMeshes: null
   };
 }
 
@@ -1746,89 +2078,170 @@ function createVehicle(directionKey, forceType) {
 const SHIRT_COLORS = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf39c12, 0x9b59b6, 0xe67e22, 0xecf0f1, 0x1abc9c];
 const PANTS_COLORS = [0x2c3e50, 0x34495e, 0x1a1a2e, 0x3d4f5f, 0x4a3728];
 const HAIR_COLORS = [0x2a1a0a, 0x6b4226, 0xd4a460, 0x1a1a1a, 0x8b4513, 0xcc6633];
+const SIDEWALK_CENTER = ROAD_WIDTH / 2 + 1.75; // center of sidewalk strip
+
+const PED_TYPES = [
+  { name: 'normal',     speedMult: 1.0,  weight: 5 },
+  { name: 'elderly',    speedMult: 0.55, weight: 3 },
+  { name: 'jogger',     speedMult: 1.6,  weight: 2 },
+  { name: 'dogwalker',  speedMult: 0.8,  weight: 3 },
+  { name: 'stroller',   speedMult: 0.7,  weight: 2 },
+  { name: 'child',      speedMult: 1.2,  weight: 2 },
+];
+
+function pickPedType() {
+  const total = PED_TYPES.reduce((s, p) => s + p.weight, 0);
+  let r = Math.random() * total;
+  for (const pt of PED_TYPES) { r -= pt.weight; if (r <= 0) return pt; }
+  return PED_TYPES[0];
+}
+
+function buildPersonGeos(S, skinGeos, shirtGeos, pantsGeos, shoeGeos, hairGeos, offsetX) {
+  const ox = offsetX || 0;
+  const torso = new THREE.BoxGeometry(0.3 * S, 0.45 * S, 0.22 * S);
+  torso.translate(ox, 1.0 * S, 0); shirtGeos.push(torso);
+  const arm = new THREE.BoxGeometry(0.1 * S, 0.38 * S, 0.1 * S);
+  const aL = arm.clone(); aL.translate(ox - 0.25 * S, 0.92 * S, 0); shirtGeos.push(aL);
+  const aR = arm.clone(); aR.translate(ox + 0.25 * S, 0.92 * S, 0); shirtGeos.push(aR);
+  const leg = new THREE.BoxGeometry(0.13 * S, 0.45 * S, 0.13 * S);
+  const lL = leg.clone(); lL.translate(ox - 0.09 * S, 0.45 * S, 0); pantsGeos.push(lL);
+  const lR = leg.clone(); lR.translate(ox + 0.09 * S, 0.45 * S, 0); pantsGeos.push(lR);
+  const shoe = new THREE.BoxGeometry(0.14 * S, 0.1 * S, 0.18 * S);
+  const sL = shoe.clone(); sL.translate(ox - 0.09 * S, 0.18 * S, 0.02 * S); shoeGeos.push(sL);
+  const sR = shoe.clone(); sR.translate(ox + 0.09 * S, 0.18 * S, 0.02 * S); shoeGeos.push(sR);
+  const head = new THREE.SphereGeometry(0.16 * S, 8, 6);
+  head.translate(ox, 1.42 * S, 0); skinGeos.push(head);
+  const hand = new THREE.SphereGeometry(0.06 * S, 5, 4);
+  const hL = hand.clone(); hL.translate(ox - 0.25 * S, 0.7 * S, 0); skinGeos.push(hL);
+  const hR = hand.clone(); hR.translate(ox + 0.25 * S, 0.7 * S, 0); skinGeos.push(hR);
+  const hair = new THREE.SphereGeometry(0.17 * S, 8, 6);
+  hair.scale(1, 0.6, 1); hair.translate(ox, 1.5 * S, -0.02 * S); hairGeos.push(hair);
+}
 
 function createPedestrian() {
-  // Pedestrians cross at crosswalks (perpendicular to a random road)
-  // Pick a crosswalk: NS crosswalks cross E-W, EW crosswalks cross N-S
+  // Pick which crosswalk to use
   const crossings = [
-    { crossAxis: 'x', fixedAxis: 'z', fixedPos: STOP_LINE_DIST + 1.2, sign: Math.random() > 0.5 ? 1 : -1 },
-    { crossAxis: 'x', fixedAxis: 'z', fixedPos: -(STOP_LINE_DIST + 1.2), sign: Math.random() > 0.5 ? 1 : -1 },
-    { crossAxis: 'z', fixedAxis: 'x', fixedPos: STOP_LINE_DIST + 1.2, sign: Math.random() > 0.5 ? 1 : -1 },
-    { crossAxis: 'z', fixedAxis: 'x', fixedPos: -(STOP_LINE_DIST + 1.2), sign: Math.random() > 0.5 ? 1 : -1 },
+    { crossAxis: 'x', fixedAxis: 'z', fixedPos: CROSSWALK_DIST, sign: Math.random() > 0.5 ? 1 : -1 },
+    { crossAxis: 'x', fixedAxis: 'z', fixedPos: -CROSSWALK_DIST, sign: Math.random() > 0.5 ? 1 : -1 },
+    { crossAxis: 'z', fixedAxis: 'x', fixedPos: CROSSWALK_DIST, sign: Math.random() > 0.5 ? 1 : -1 },
+    { crossAxis: 'z', fixedAxis: 'x', fixedPos: -CROSSWALK_DIST, sign: Math.random() > 0.5 ? 1 : -1 },
   ];
   const crossing = crossings[Math.floor(Math.random() * crossings.length)];
+  const pedType = pickPedType();
 
   const group = new THREE.Group();
   const skinColor = [0xe8b88a, 0xc68642, 0x8d5524, 0xf1c27d][Math.floor(Math.random() * 4)];
   const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
-  const shirtColor = SHIRT_COLORS[Math.floor(Math.random() * SHIRT_COLORS.length)];
-  const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.7 });
+  const shirtMat = new THREE.MeshStandardMaterial({ color: SHIRT_COLORS[Math.floor(Math.random() * SHIRT_COLORS.length)], roughness: 0.7 });
   const pantsMat = new THREE.MeshStandardMaterial({ color: PANTS_COLORS[Math.floor(Math.random() * PANTS_COLORS.length)], roughness: 0.7 });
   const hairMat = new THREE.MeshStandardMaterial({ color: HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)], roughness: 0.8 });
   const shoeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
 
-  // Pedestrians are scaled 1.8x for visibility
-  const S = 1.8;
-  // Build pedestrian (merged per material)
-  const shirtGeos = [];
-  const pantsGeos = [];
-  const skinGeos = [];
-  const shoeGeos = [];
+  const S = 1.8; // base scale
+  const shirtGeos = [], pantsGeos = [], skinGeos = [], shoeGeos = [], hairGeos = [];
+  const extraGeos = []; // for accessories (same color as shirt or special)
 
-  // Torso
-  const torsoGeo = new THREE.BoxGeometry(0.3 * S, 0.45 * S, 0.22 * S);
-  torsoGeo.translate(0, 1.0 * S, 0);
-  shirtGeos.push(torsoGeo);
-  // Arms
-  const armGeo = new THREE.BoxGeometry(0.1 * S, 0.38 * S, 0.1 * S);
-  const aL = armGeo.clone(); aL.translate(-0.25 * S, 0.92 * S, 0); shirtGeos.push(aL);
-  const aR = armGeo.clone(); aR.translate(0.25 * S, 0.92 * S, 0); shirtGeos.push(aR);
-
-  // Legs
-  const legGeo = new THREE.BoxGeometry(0.13 * S, 0.45 * S, 0.13 * S);
-  const lL = legGeo.clone(); lL.translate(-0.09 * S, 0.45 * S, 0); pantsGeos.push(lL);
-  const lR = legGeo.clone(); lR.translate(0.09 * S, 0.45 * S, 0); pantsGeos.push(lR);
-
-  // Shoes (bright white for visibility)
-  const shoeGeo = new THREE.BoxGeometry(0.14 * S, 0.1 * S, 0.18 * S);
-  const sL = shoeGeo.clone(); sL.translate(-0.09 * S, 0.18 * S, 0.02 * S); shoeGeos.push(sL);
-  const sR = shoeGeo.clone(); sR.translate(0.09 * S, 0.18 * S, 0.02 * S); shoeGeos.push(sR);
-
-  // Head
-  const headGeo = new THREE.SphereGeometry(0.16 * S, 8, 6);
-  headGeo.translate(0, 1.42 * S, 0);
-  skinGeos.push(headGeo);
-  // Hands
-  const handGeo = new THREE.SphereGeometry(0.06 * S, 5, 4);
-  const hL = handGeo.clone(); hL.translate(-0.25 * S, 0.7 * S, 0); skinGeos.push(hL);
-  const hR = handGeo.clone(); hR.translate(0.25 * S, 0.7 * S, 0); skinGeos.push(hR);
-
-  // Hair
-  const hairGeo = new THREE.SphereGeometry(0.17 * S, 8, 6);
-  hairGeo.scale(1, 0.6, 1);
-  hairGeo.translate(0, 1.5 * S, -0.02 * S);
-
-  group.add(new THREE.Mesh(mergeGeometries(shirtGeos), shirtMat));
-  group.add(new THREE.Mesh(mergeGeometries(pantsGeos), pantsMat));
-  group.add(new THREE.Mesh(mergeGeometries(skinGeos), skinMat));
-  group.add(new THREE.Mesh(hairGeo, hairMat));
-  group.add(new THREE.Mesh(mergeGeometries(shoeGeos), shoeMat));
-
-  // Position at edge of crosswalk
-  const startPos = ROAD_WIDTH / 2 + 1.5;
-  if (crossing.crossAxis === 'x') {
-    group.position.x = crossing.sign * startPos;
-    group.position.z = crossing.fixedPos;
-    group.rotation.y = crossing.sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+  if (pedType.name === 'elderly') {
+    // Shorter, hunched — smaller scale, cane
+    const eS = S * 0.85;
+    buildPersonGeos(eS, skinGeos, shirtGeos, pantsGeos, shoeGeos, hairGeos);
+    // Cane
+    const cane = new THREE.CylinderGeometry(0.03 * S, 0.03 * S, 0.85 * S, 4);
+    cane.translate(0.3 * S, 0.45 * S, 0.1 * S);
+    extraGeos.push(cane);
+    // Hat (flat cap)
+    const hat = new THREE.CylinderGeometry(0.2 * S, 0.18 * S, 0.08 * S, 8);
+    hat.translate(0, 1.55 * eS, 0); extraGeos.push(hat);
+  } else if (pedType.name === 'jogger') {
+    buildPersonGeos(S, skinGeos, shirtGeos, pantsGeos, shoeGeos, hairGeos);
+    // Headband
+    const band = new THREE.TorusGeometry(0.16 * S, 0.02 * S, 4, 12);
+    band.rotateX(Math.PI / 2);
+    band.translate(0, 1.48 * S, 0); extraGeos.push(band);
+  } else if (pedType.name === 'dogwalker') {
+    buildPersonGeos(S, skinGeos, shirtGeos, pantsGeos, shoeGeos, hairGeos);
+    // Dog body
+    const dogMat = new THREE.MeshStandardMaterial({ color: [0x8B4513, 0xD2B48C, 0x333333, 0xFFFFFF][Math.floor(Math.random() * 4)], roughness: 0.7 });
+    const dogBody = new THREE.BoxGeometry(0.22 * S, 0.2 * S, 0.5 * S);
+    dogBody.translate(0.35 * S, 0.22 * S, 0.3 * S);
+    const dogHead = new THREE.SphereGeometry(0.1 * S, 6, 5);
+    dogHead.translate(0.35 * S, 0.3 * S, 0.55 * S);
+    const dogLeg1 = new THREE.BoxGeometry(0.06 * S, 0.15 * S, 0.06 * S);
+    const dl1 = dogLeg1.clone(); dl1.translate(0.28 * S, 0.08 * S, 0.15 * S);
+    const dl2 = dogLeg1.clone(); dl2.translate(0.42 * S, 0.08 * S, 0.15 * S);
+    const dl3 = dogLeg1.clone(); dl3.translate(0.28 * S, 0.08 * S, 0.45 * S);
+    const dl4 = dogLeg1.clone(); dl4.translate(0.42 * S, 0.08 * S, 0.45 * S);
+    const dogTail = new THREE.CylinderGeometry(0.02 * S, 0.015 * S, 0.18 * S, 4);
+    dogTail.rotateX(-0.5); dogTail.translate(0.35 * S, 0.38 * S, 0.05 * S);
+    group.add(new THREE.Mesh(mergeGeometries([dogBody, dogHead, dl1, dl2, dl3, dl4, dogTail]), dogMat));
+    // Leash
+    const leash = new THREE.CylinderGeometry(0.01 * S, 0.01 * S, 0.5 * S, 3);
+    leash.rotateX(-0.6); leash.translate(0.3 * S, 0.55 * S, 0.3 * S);
+    extraGeos.push(leash);
+  } else if (pedType.name === 'stroller') {
+    buildPersonGeos(S, skinGeos, shirtGeos, pantsGeos, shoeGeos, hairGeos);
+    // Stroller frame
+    const strollerMat = new THREE.MeshStandardMaterial({ color: [0x2266aa, 0xcc3333, 0x22aa44, 0x9944cc][Math.floor(Math.random() * 4)], roughness: 0.5 });
+    const basket = new THREE.BoxGeometry(0.35 * S, 0.25 * S, 0.4 * S);
+    basket.translate(0, 0.35 * S, 0.45 * S);
+    const hood = new THREE.SphereGeometry(0.2 * S, 6, 4, 0, Math.PI);
+    hood.rotateX(-0.3); hood.translate(0, 0.5 * S, 0.35 * S);
+    const handle = new THREE.CylinderGeometry(0.02 * S, 0.02 * S, 0.5 * S, 4);
+    handle.translate(0, 0.7 * S, 0.65 * S);
+    const w1 = new THREE.CylinderGeometry(0.06 * S, 0.06 * S, 0.04 * S, 8);
+    w1.rotateZ(Math.PI / 2);
+    const wl1 = w1.clone(); wl1.translate(-0.18 * S, 0.12 * S, 0.28 * S);
+    const wl2 = w1.clone(); wl2.translate(0.18 * S, 0.12 * S, 0.28 * S);
+    const wl3 = w1.clone(); wl3.translate(-0.18 * S, 0.12 * S, 0.62 * S);
+    const wl4 = w1.clone(); wl4.translate(0.18 * S, 0.12 * S, 0.62 * S);
+    group.add(new THREE.Mesh(mergeGeometries([basket, hood, handle, wl1, wl2, wl3, wl4]), strollerMat));
+  } else if (pedType.name === 'child') {
+    // Small person
+    const cS = S * 0.6;
+    buildPersonGeos(cS, skinGeos, shirtGeos, pantsGeos, shoeGeos, hairGeos);
+    // Backpack
+    const bp = new THREE.BoxGeometry(0.2 * cS, 0.25 * cS, 0.12 * cS);
+    bp.translate(0, 0.9 * cS, -0.17 * cS); extraGeos.push(bp);
   } else {
-    group.position.z = crossing.sign * startPos;
-    group.position.x = crossing.fixedPos;
-    group.rotation.y = crossing.sign > 0 ? Math.PI : 0;
+    // Normal pedestrian
+    buildPersonGeos(S, skinGeos, shirtGeos, pantsGeos, shoeGeos, hairGeos);
   }
-  group.position.y = 0;
+
+  if (shirtGeos.length) group.add(new THREE.Mesh(mergeGeometries(shirtGeos), shirtMat));
+  if (pantsGeos.length) group.add(new THREE.Mesh(mergeGeometries(pantsGeos), pantsMat));
+  if (skinGeos.length) group.add(new THREE.Mesh(mergeGeometries(skinGeos), skinMat));
+  if (hairGeos.length) group.add(new THREE.Mesh(mergeGeometries(hairGeos), hairMat));
+  if (shoeGeos.length) group.add(new THREE.Mesh(mergeGeometries(shoeGeos), shoeMat));
+  if (extraGeos.length) {
+    const accMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.6 });
+    group.add(new THREE.Mesh(mergeGeometries(extraGeos), accMat));
+  }
+
+  // Spawn off-map on the sidewalk, walk toward the crosswalk
+  // The sidewalk runs parallel to the road the ped will cross
+  // crossAxis = direction ped walks across the road ('x' or 'z')
+  // sidewalkAxis = axis ped walks along the sidewalk to reach crosswalk (perpendicular to crossAxis)
+  const sidewalkAxis = crossing.crossAxis === 'x' ? 'z' : 'x';
+  const approachSign = Math.random() > 0.5 ? 1 : -1; // which end of sidewalk they come from
+  const sidewalkOffset = crossing.sign * SIDEWALK_CENTER; // which side of the road
+
+  // Start far away on the sidewalk
+  if (crossing.crossAxis === 'x') {
+    // Crosses in x. Sidewalk runs in z. Fixed z will be the crosswalk z position.
+    group.position.x = sidewalkOffset;
+    group.position.z = approachSign * (SPAWN_DIST - 5);
+    // Face toward crosswalk
+    group.rotation.y = approachSign > 0 ? Math.PI : 0;
+  } else {
+    // Crosses in z. Sidewalk runs in x. Fixed x will be the crosswalk x position.
+    group.position.z = sidewalkOffset;
+    group.position.x = approachSign * (SPAWN_DIST - 5);
+    group.rotation.y = approachSign > 0 ? -Math.PI / 2 : Math.PI / 2;
+  }
+  group.position.y = 0.2; // sidewalk height
   scene.add(group);
 
-  const pedSpeed = 2.0 + Math.random() * 1.5;
+  const pedSpeed = (2.0 + Math.random() * 1.5) * pedType.speedMult;
 
   return {
     mesh: group,
@@ -1837,17 +2250,19 @@ function createPedestrian() {
       ? { axis: 'x', sign: crossing.sign, perpAxis: 'z', laneOffset: crossing.fixedPos, angle: crossing.sign > 0 ? -Math.PI / 2 : Math.PI / 2 }
       : { axis: 'z', sign: crossing.sign, perpAxis: 'x', laneOffset: crossing.fixedPos, angle: crossing.sign > 0 ? Math.PI : 0 },
     speed: pedSpeed,
-    state: 'moving',
-    distanceFromCenter: startPos,
+    state: 'approaching', // new state: walking along sidewalk toward crosswalk
+    distanceFromCenter: SPAWN_DIST - 5,
     cleared: false,
     vehicleLength: 0.7,
     vehicleWidth: 0.5,
-    vehicleType: 'pedestrian',
+    vehicleType: pedType.name,
     isPedestrian: true,
     crossAxis: crossing.crossAxis,
     crossSign: crossing.sign,
     crossFixed: crossing.fixedPos,
-    pedBob: Math.random() * Math.PI * 2  // walking animation phase
+    sidewalkAxis: sidewalkAxis,
+    approachSign: approachSign,
+    pedBob: Math.random() * Math.PI * 2
   };
 }
 
@@ -1887,8 +2302,8 @@ function spawnCars() {
     cars.push(car);
   }
 
-  // Occasionally spawn a pedestrian (roughly every 3rd spawn cycle)
-  if (Math.random() < 0.35 && gameRunning) {
+  // Occasionally spawn a pedestrian (not in wave 1)
+  if (wave >= 2 && Math.random() < 0.12 && gameRunning) {
     const ped = createPedestrian();
     if (ped) cars.push(ped);
   }
@@ -1903,18 +2318,67 @@ function updateCars(dt) {
     // --- PEDESTRIAN UPDATE ---
     if (car.isPedestrian) {
       const ped = car;
-      // Pedestrians walk across the crosswalk regardless of signals (they have right of way when ALL_STOP)
-      // But they wait at the edge if traffic is flowing on their crossing road
       const crossAxis = ped.crossAxis; // 'x' or 'z'
-      const crossingNS = crossAxis === 'z'; // pedestrian crosses along z = they cross a NS road
-      const trafficFlowingOnCrossRoad = crossingNS
+      const sidewalkAxis = ped.sidewalkAxis; // perpendicular to crossAxis
+
+      // Walking bob animation helper
+      const doBob = () => {
+        ped.pedBob += dt * 8;
+        ped.mesh.position.y = 0.2 + Math.abs(Math.sin(ped.pedBob)) * 0.06;
+      };
+
+      // STATE: approaching — walking along sidewalk toward crosswalk
+      if (ped.state === 'approaching') {
+        const moveAmount = ped.speed * dt;
+        if (sidewalkAxis === 'z') {
+          ped.mesh.position.z -= ped.approachSign * moveAmount;
+        } else {
+          ped.mesh.position.x -= ped.approachSign * moveAmount;
+        }
+        doBob();
+
+        // Check if we've reached the crosswalk position
+        const swPos = sidewalkAxis === 'z' ? ped.mesh.position.z : ped.mesh.position.x;
+        const targetPos = ped.crossFixed;
+        const distToTarget = (targetPos - swPos) * (-ped.approachSign);
+        if (distToTarget <= 0.1) {
+          // Snap to crosswalk position and switch to crossing mode
+          if (sidewalkAxis === 'z') ped.mesh.position.z = targetPos;
+          else ped.mesh.position.x = targetPos;
+          ped.state = 'moving';
+          // Rotate to face across the road
+          if (crossAxis === 'x') {
+            ped.mesh.rotation.y = ped.crossSign > 0 ? -Math.PI / 2 : Math.PI / 2;
+          } else {
+            ped.mesh.rotation.y = ped.crossSign > 0 ? Math.PI : 0;
+          }
+        }
+
+        // Remove if walked off map without reaching crosswalk
+        const absSwPos = Math.abs(swPos);
+        if (absSwPos > EXIT_DIST) toRemove.push(ped);
+        continue;
+      }
+
+      // Signal and intersection checks (only for crossing states)
+      // crossAxis='x' → ped walks in x → crosses NS road → danger from NS traffic
+      // crossAxis='z' → ped walks in z → crosses EW road → danger from EW traffic
+      const trafficFlowingOnCrossRoad = crossAxis === 'x'
         ? (signalState === SIGNAL_STATES.NS_GO || signalState === SIGNAL_STATES.ALL_GO)
         : (signalState === SIGNAL_STATES.EW_GO || signalState === SIGNAL_STATES.ALL_GO);
+
+      const conflictAxis = crossAxis === 'x' ? 'z' : 'x';
+      const intersectionBusy = cars.some(c => {
+        if (c === ped || c.isPedestrian || c.state === 'crashed' || c.state === 'waiting') return false;
+        if (c.dirData.axis !== conflictAxis) return false;
+        return c.distanceFromCenter < STOP_LINE_DIST;
+      });
 
       const pedPos = crossAxis === 'x' ? ped.mesh.position.x : ped.mesh.position.z;
       const pedDist = Math.abs(pedPos);
       ped.distanceFromCenter = pedDist;
 
+      // STATE: crossing the road (moving / through)
       if (ped.state === 'moving' || ped.state === 'through') {
         const moveAmount = ped.speed * dt;
         if (crossAxis === 'x') {
@@ -1922,29 +2386,47 @@ function updateCars(dt) {
         } else {
           ped.mesh.position.z -= ped.crossSign * moveAmount;
         }
-        // Walking bob animation
-        ped.pedBob += dt * 8;
-        ped.mesh.position.y = Math.abs(Math.sin(ped.pedBob)) * 0.06;
+        doBob();
 
         if (pedDist < ROAD_WIDTH / 2) ped.state = 'through';
 
-        // Remove when across
+        // Score when they clear the road, then switch to departing
         const newPos = crossAxis === 'x' ? ped.mesh.position.x : ped.mesh.position.z;
-        if (Math.abs(newPos) > ROAD_WIDTH / 2 + 2 && Math.sign(newPos) !== Math.sign(ped.crossSign)) {
-          if (!ped.cleared) {
-            ped.cleared = true;
-            score += 5;
-            carsCleared++;
+        if (!ped.cleared && Math.abs(newPos) > ROAD_WIDTH / 2 + 2 && Math.sign(newPos) !== Math.sign(ped.crossSign)) {
+          ped.cleared = true;
+          score += 5;
+          carsCleared++;
+          // Switch to departing — walk along far sidewalk and off map
+          ped.state = 'departing';
+          ped.mesh.position.y = 0.2; // back on sidewalk height
+          // Pick random direction to walk along the far sidewalk
+          ped.departSign = Math.random() > 0.5 ? 1 : -1;
+          if (sidewalkAxis === 'z') {
+            ped.mesh.rotation.y = ped.departSign > 0 ? 0 : Math.PI;
+          } else {
+            ped.mesh.rotation.y = ped.departSign > 0 ? Math.PI / 2 : -Math.PI / 2;
           }
-          toRemove.push(ped);
         }
       } else if (ped.state === 'waiting') {
-        if (!trafficFlowingOnCrossRoad || signalState === SIGNAL_STATES.ALL_STOP) {
+        if ((!trafficFlowingOnCrossRoad || signalState === SIGNAL_STATES.ALL_STOP) && !intersectionBusy) {
           ped.state = 'moving';
         }
+      } else if (ped.state === 'departing') {
+        // Walk along far sidewalk off map
+        const moveAmount = ped.speed * dt;
+        if (sidewalkAxis === 'z') {
+          ped.mesh.position.z += ped.departSign * moveAmount;
+        } else {
+          ped.mesh.position.x += ped.departSign * moveAmount;
+        }
+        doBob();
+        const depPos = sidewalkAxis === 'z' ? ped.mesh.position.z : ped.mesh.position.x;
+        if (Math.abs(depPos) > EXIT_DIST) toRemove.push(ped);
+        continue;
       }
-      // Wait at edge before entering road
-      if (ped.state === 'moving' && pedDist > ROAD_WIDTH / 2 && trafficFlowingOnCrossRoad && signalState !== SIGNAL_STATES.ALL_STOP) {
+
+      // Wait at edge before entering road (traffic flowing OR vehicles in intersection)
+      if (ped.state === 'moving' && pedDist > ROAD_WIDTH / 2 && (trafficFlowingOnCrossRoad || intersectionBusy) && signalState !== SIGNAL_STATES.ALL_STOP) {
         ped.state = 'waiting';
       }
       continue;
@@ -1958,51 +2440,77 @@ function updateCars(dt) {
     car.distanceFromCenter = distFromCenter;
 
     const shouldStop = isCarSignaledToStop(car);
-    const inIntersection = distFromCenter < INTERSECTION_SIZE / 2 + (car.vehicleLength || CAR_LENGTH) / 2;
-
-    // Check if another car of same direction is ahead and close
     const vLen = car.vehicleLength || CAR_LENGTH;
-    const carAhead = cars.some(other => {
-      if (other === car || other.direction !== car.direction || other.state === 'crashed') return false;
-      if (other.isPedestrian) return false;
-      const otherPos = isNS ? other.mesh.position.z : other.mesh.position.x;
-      const myPos = posComponent;
-      const diff = (otherPos - myPos) * (-dir.sign);
-      const gap = (vLen + (other.vehicleLength || CAR_LENGTH)) * 0.5 + 0.5;
-      return diff > 0 && diff < gap;
-    });
+    const BRAKE_ZONE = 4; // start braking this many units before a block
 
     if (car.state === 'moving' || car.state === 'through') {
-      if (shouldStop && distFromCenter > STOP_LINE_DIST - 1 && !inIntersection && !car.state.includes('through')) {
-        // Should stop at stop line
-        if (distFromCenter <= STOP_LINE_DIST + 0.5) {
-          car.state = 'waiting';
-        }
-      }
+      let moveAmount = car.speed * dt;
+      let atStopLine = false;
 
-      if (carAhead) {
-        // Don't move if car ahead is too close
-      } else {
-        // Move forward
-        const moveAmount = car.speed * dt;
-        if (isNS) {
-          car.mesh.position.z -= dir.sign * moveAmount;
+      // BLOCK 1: Stop line — front bumper stops at STOP_LINE_DIST, center further back
+      if (shouldStop && car.state !== 'through') {
+        const stopLinePos = dir.sign * (STOP_LINE_DIST + vLen / 2);
+        const distToStop = (stopLinePos - posComponent) * (-dir.sign);
+
+        if (distToStop <= 0.05) {
+          // At the stop line — stop completely
+          moveAmount = 0;
+          atStopLine = true;
+          if (isNS) car.mesh.position.z = stopLinePos;
+          else car.mesh.position.x = stopLinePos;
+        } else if (distToStop < BRAKE_ZONE) {
+          // Decelerate smoothly approaching stop line
+          const decel = car.speed * dt * (distToStop / BRAKE_ZONE);
+          moveAmount = Math.min(moveAmount, decel, distToStop);
         } else {
-          car.mesh.position.x -= dir.sign * moveAmount;
+          // Don't overshoot the stop line
+          moveAmount = Math.min(moveAmount, distToStop);
         }
       }
 
-      // Mark as through once in intersection
-      if (inIntersection) {
+      // BLOCK 2: Queue behind any car ahead in same direction
+      for (const other of cars) {
+        if (other === car || other.direction !== car.direction || other.state === 'crashed' || other.isPedestrian) continue;
+        const otherPos = isNS ? other.mesh.position.z : other.mesh.position.x;
+        const fwdDist = (otherPos - posComponent) * (-dir.sign);
+        if (fwdDist <= 0) continue; // not ahead
+
+        const gap = (vLen + (other.vehicleLength || CAR_LENGTH)) * 0.5 + 1.5;
+        const distToGap = fwdDist - gap;
+
+        if (distToGap <= 0.05) {
+          moveAmount = 0;
+        } else if (distToGap < BRAKE_ZONE) {
+          moveAmount = Math.min(moveAmount, car.speed * dt * (distToGap / BRAKE_ZONE), distToGap);
+        } else {
+          moveAmount = Math.min(moveAmount, distToGap);
+        }
+      }
+
+      // Apply movement
+      if (moveAmount > 0.001) {
+        if (isNS) car.mesh.position.z -= dir.sign * moveAmount;
+        else car.mesh.position.x -= dir.sign * moveAmount;
+      }
+
+      // Transition to waiting if stopped at the stop line
+      if (atStopLine && car.state !== 'through') {
+        car.state = 'waiting';
+        car.waitTime = 0;
+      }
+
+      // Mark as through when inside the intersection
+      const updatedPos = isNS ? car.mesh.position.z : car.mesh.position.x;
+      const updatedDist = Math.abs(updatedPos);
+      if (updatedDist < INTERSECTION_SIZE / 2 + vLen / 2 && car.state !== 'waiting') {
         car.state = 'through';
       }
 
-      // Check if exited
-      const newPos = isNS ? car.mesh.position.z : car.mesh.position.x;
-      if (Math.abs(newPos) > EXIT_DIST) {
+      // Remove when exited
+      if (Math.abs(updatedPos) > EXIT_DIST) {
         if (!car.cleared) {
           car.cleared = true;
-          score += car.isEmergency ? 50 : 10;
+          score += 10;
           carsCleared++;
           playScore();
         }
@@ -2010,8 +2518,18 @@ function updateCars(dt) {
       }
     } else if (car.state === 'waiting') {
       if (!shouldStop) {
-        // Signal changed, start moving
+        // Signal changed — resume
         car.state = 'moving';
+        car.waitTime = 0;
+        car.mesh.rotation.z = 0;
+      } else {
+        // Impatient waiting: shake the car slightly
+        if (!car.waitTime) car.waitTime = 0;
+        car.waitTime += dt;
+        if (car.waitTime > 3) {
+          const shake = Math.sin(car.waitTime * 6) * 0.02 * Math.min(1, (car.waitTime - 3) / 4);
+          car.mesh.rotation.z = shake;
+        }
       }
     }
   }
@@ -2040,6 +2558,51 @@ function isCarSignaledToStop(car) {
   if (signalState === SIGNAL_STATES.NS_GO && isNS) return false;
   if (signalState === SIGNAL_STATES.EW_GO && !isNS) return false;
   return true;
+}
+
+// ============================================================
+// BRAKE LIGHTS & TRAFFIC JAM VISUALS
+// ============================================================
+const _brakeLightMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0 });
+
+function updateBrakeLights() {
+  for (const car of cars) {
+    if (car.isPedestrian) continue;
+    if (car.state === 'crashed') continue;
+
+    const isStopped = car.state === 'waiting' || (car.state === 'moving' && isCarSignaledToStop(car));
+
+    // Create brake lights once per car if missing
+    if (!car.brakeLightMeshes && car.vehicleType !== 'motorcycle') {
+      const W = car.vehicleWidth || CAR_WIDTH;
+      const L = car.vehicleLength || CAR_LENGTH;
+      const H = car.mesh.children[0] ? 0.6 : 0.5;
+      const blGeo = new THREE.PlaneGeometry(0.25, 0.15);
+      const mat1 = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0 });
+      const mat2 = mat1.clone();
+      const bl1 = new THREE.Mesh(blGeo, mat1);
+      const bl2 = new THREE.Mesh(blGeo, mat2);
+      bl1.position.set(-W * 0.35, H, -L / 2 - 0.01);
+      bl2.position.set(W * 0.35, H, -L / 2 - 0.01);
+      car.mesh.add(bl1);
+      car.mesh.add(bl2);
+      car.brakeLightMeshes = [{ mesh: bl1, mat: mat1 }, { mesh: bl2, mat: mat2 }];
+    }
+
+    // Update brake light intensity
+    if (car.brakeLightMeshes) {
+      const targetIntensity = isStopped ? 1.2 : 0;
+      for (const bl of car.brakeLightMeshes) {
+        bl.mat.emissiveIntensity += (targetIntensity - bl.mat.emissiveIntensity) * 0.2;
+      }
+    }
+
+    // Reset rotation for cars that started moving again
+    if (car.state === 'moving' || car.state === 'through') {
+      car.waitTime = 0;
+      car.mesh.rotation.z *= 0.9; // smooth back to 0
+    }
+  }
 }
 
 // ============================================================
@@ -2090,52 +2653,336 @@ function checkCollisions() {
       const b = cars[j];
       if (a.state === 'crashed' || b.state === 'crashed') continue;
       if (a.direction === b.direction) continue; // same lane, no collision
-
-      const dist = a.mesh.position.distanceTo(b.mesh.position);
       // Skip pedestrian-pedestrian collisions
       if (a.isPedestrian && b.isPedestrian) continue;
+
+      // Only check collisions when both entities are near the intersection
+      if (a.distanceFromCenter > STOP_LINE_DIST + 2 || b.distanceFromCenter > STOP_LINE_DIST + 2) continue;
+
+      const dist = a.mesh.position.distanceTo(b.mesh.position);
       const minDist = ((a.vehicleLength || CAR_LENGTH) + (b.vehicleLength || CAR_LENGTH)) * 0.35;
+
+      // Near-miss warning (within 1.5x collision distance)
+      const nearMissDist = minDist * 1.8;
+      if (dist < nearMissDist && dist >= minDist) {
+        if (!a.nearMissWarned && !b.nearMissWarned) {
+          showNearMissWarning(a, b);
+          a.nearMissWarned = true;
+          b.nearMissWarned = true;
+        }
+      } else {
+        a.nearMissWarned = false;
+        b.nearMissWarned = false;
+      }
+
       if (dist < minDist) {
         // CRASH!
         a.state = 'crashed';
         b.state = 'crashed';
         playCrash();
+        showCrashEffect(a, b);
         // Determine game over reason
         const pedHit = a.isPedestrian || b.isPedestrian;
-        const emergencyHit = a.isEmergency || b.isEmergency;
-        triggerGameOver(pedHit ? 'pedestrian' : emergencyHit ? 'emergency' : 'crash');
+        triggerGameOver(pedHit ? 'pedestrian' : 'crash');
         return;
       }
     }
   }
 }
 
-function checkBackup() {
-  const counts = { NORTH: 0, SOUTH: 0, EAST: 0, WEST: 0 };
-  for (let i = 0; i < cars.length; i++) {
-    const c = cars[i];
-    if (c.isPedestrian || c.state === 'crashed' || c.state === 'through') continue;
-    const threshold = SPAWN_DIST - (c.vehicleLength || CAR_LENGTH) * 3;
-    if (c.distanceFromCenter >= threshold) counts[c.direction]++;
+// Visual near-miss warning — yellow flash at near-miss point
+function showNearMissWarning(a, b) {
+  nearMissFlashTimer = 0.5;
+  playHonk(); // startled honk
+}
+
+// Visual crash effect — sparks, bounce, and persistent crash marker
+function showCrashEffect(a, b) {
+  const midX = (a.mesh.position.x + b.mesh.position.x) / 2;
+  const midY = 1.5;
+  const midZ = (a.mesh.position.z + b.mesh.position.z) / 2;
+
+  // Spark particles
+  const sparkGeo = new THREE.SphereGeometry(0.12, 4, 4);
+  const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+  const sparks = [];
+  for (let i = 0; i < 20; i++) {
+    const spark = new THREE.Mesh(sparkGeo, sparkMat.clone());
+    spark.position.set(midX, midY, midZ);
+    spark.userData.vel = new THREE.Vector3(
+      (Math.random() - 0.5) * 15,
+      Math.random() * 10 + 3,
+      (Math.random() - 0.5) * 15
+    );
+    spark.userData.life = 0.6 + Math.random() * 0.4;
+    scene.add(spark);
+    sparks.push(spark);
   }
-  if (counts.NORTH >= 2 || counts.SOUTH >= 2 || counts.EAST >= 2 || counts.WEST >= 2) {
-    triggerGameOver('backup');
+
+  // Persistent crash marker — glowing ring on ground
+  const ringGeo = new THREE.TorusGeometry(2.5, 0.15, 8, 32);
+  ringGeo.rotateX(Math.PI / 2);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: true, opacity: 0.9 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.set(midX, 0.1, midZ);
+  scene.add(ring);
+  crashDebris.push(ring);
+
+  // Pillar of red light
+  const pillarGeo = new THREE.CylinderGeometry(0.3, 1.5, 8, 12, 1, true);
+  const pillarMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+  const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+  pillar.position.set(midX, 4, midZ);
+  scene.add(pillar);
+  crashDebris.push(pillar);
+
+  // Crash icon — floating X
+  const xMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const bar1 = new THREE.BoxGeometry(0.3, 2.0, 0.3);
+  bar1.rotateZ(Math.PI / 4);
+  bar1.translate(midX, 3.5, midZ);
+  const bar2 = new THREE.BoxGeometry(0.3, 2.0, 0.3);
+  bar2.rotateZ(-Math.PI / 4);
+  bar2.translate(midX, 3.5, midZ);
+  const xMesh = new THREE.Mesh(mergeGeometries([bar1, bar2]), xMat);
+  scene.add(xMesh);
+  crashDebris.push(xMesh);
+
+  // Tilt crashed vehicles slightly
+  if (!a.isPedestrian) a.mesh.rotation.z = (Math.random() - 0.5) * 0.3;
+  if (!b.isPedestrian) b.mesh.rotation.z = (Math.random() - 0.5) * 0.3;
+
+  // Animate sparks + pulse ring
+  let sparkTime = 0;
+  function animateSparks() {
+    const sdt = 0.016;
+    sparkTime += sdt;
+    let alive = false;
+    for (const s of sparks) {
+      s.userData.life -= sdt;
+      if (s.userData.life <= 0) { scene.remove(s); continue; }
+      alive = true;
+      s.position.add(s.userData.vel.clone().multiplyScalar(sdt));
+      s.userData.vel.y -= 20 * sdt;
+      s.material.opacity = s.userData.life;
+      s.material.transparent = true;
+      s.scale.setScalar(s.userData.life);
+    }
+    // Pulse the ring and pillar
+    const pulse = 0.6 + Math.sin(sparkTime * 4) * 0.3;
+    ringMat.opacity = pulse;
+    pillarMat.opacity = 0.15 + Math.sin(sparkTime * 3) * 0.1;
+    if (alive) requestAnimationFrame(animateSparks);
+  }
+  animateSparks();
+}
+
+
+// ============================================================
+// WEATHER SYSTEM
+// ============================================================
+function initWeather() {
+  weatherCanvas = document.getElementById('weatherCanvas');
+  weatherCtx = weatherCanvas.getContext('2d');
+  resizeWeatherCanvas();
+  window.addEventListener('resize', resizeWeatherCanvas);
+}
+
+function resizeWeatherCanvas() {
+  if (!weatherCanvas) return;
+  weatherCanvas.width = window.innerWidth;
+  weatherCanvas.height = window.innerHeight;
+}
+
+function setWeather(type, intensity) {
+  if (type === weatherType && intensity === weatherIntensity) return;
+  weatherType = type;
+  weatherIntensity = Math.min(1, Math.max(0, intensity));
+  weatherParticles = [];
+}
+
+function updateWeather(dt) {
+  if (!weatherCtx || weatherType === 'clear') {
+    if (weatherCtx) weatherCtx.clearRect(0, 0, weatherCanvas.width, weatherCanvas.height);
+    return;
+  }
+
+  const W = weatherCanvas.width;
+  const H = weatherCanvas.height;
+  weatherCtx.clearRect(0, 0, W, H);
+
+  // Spawn new particles
+  const maxParticles = weatherType === 'rain' ? Math.floor(400 * weatherIntensity) : Math.floor(200 * weatherIntensity);
+  const spawnRate = weatherType === 'rain' ? Math.ceil(8 * weatherIntensity) : Math.ceil(3 * weatherIntensity);
+
+  for (let i = 0; i < spawnRate && weatherParticles.length < maxParticles; i++) {
+    if (weatherType === 'rain') {
+      const windOffset = 80 * weatherIntensity;
+      weatherParticles.push({
+        x: Math.random() * (W + windOffset) - windOffset,
+        y: -10 - Math.random() * 40,
+        vx: 30 + Math.random() * 60 * weatherIntensity,  // wind pushes right
+        vy: 600 + Math.random() * 400 * weatherIntensity, // fast falling
+        len: 12 + Math.random() * 18 * weatherIntensity,  // streak length
+        alpha: 0.15 + Math.random() * 0.25,
+      });
+    } else {
+      // Snow
+      weatherParticles.push({
+        x: Math.random() * W,
+        y: -5 - Math.random() * 20,
+        vx: -15 + Math.random() * 30,       // gentle drift
+        vy: 30 + Math.random() * 50 * weatherIntensity, // slow falling
+        radius: 1.5 + Math.random() * 3,
+        alpha: 0.4 + Math.random() * 0.4,
+        wobble: Math.random() * Math.PI * 2, // phase for horizontal wobble
+        wobbleSpeed: 1.5 + Math.random() * 2,
+        wobbleAmp: 15 + Math.random() * 25,
+      });
+    }
+  }
+
+  // Update and draw
+  if (weatherType === 'rain') {
+    weatherCtx.strokeStyle = 'rgba(180, 210, 240, 0.35)';
+    weatherCtx.lineWidth = 1.5;
+    weatherCtx.beginPath();
+    for (let i = weatherParticles.length - 1; i >= 0; i--) {
+      const p = weatherParticles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+
+      // Gravity acceleration
+      p.vy += 200 * dt;
+
+      if (p.y > H + 10 || p.x > W + 50) {
+        weatherParticles.splice(i, 1);
+        continue;
+      }
+
+      // Draw rain streak
+      const angle = Math.atan2(p.vy, p.vx);
+      const endX = p.x - Math.cos(angle) * p.len;
+      const endY = p.y - Math.sin(angle) * p.len;
+      weatherCtx.moveTo(p.x, p.y);
+      weatherCtx.lineTo(endX, endY);
+    }
+    weatherCtx.stroke();
+
+    // Splash effects at bottom
+    if (weatherIntensity > 0.3) {
+      weatherCtx.fillStyle = 'rgba(180, 210, 240, 0.08)';
+      const splashCount = Math.floor(5 * weatherIntensity);
+      for (let i = 0; i < splashCount; i++) {
+        const sx = Math.random() * W;
+        const sy = H - 5 - Math.random() * 15;
+        weatherCtx.beginPath();
+        weatherCtx.arc(sx, sy, 2 + Math.random() * 3, 0, Math.PI, true);
+        weatherCtx.fill();
+      }
+    }
+
+    // Darken overlay for rain atmosphere
+    weatherCtx.fillStyle = `rgba(20, 30, 50, ${0.08 * weatherIntensity})`;
+    weatherCtx.fillRect(0, 0, W, H);
+
+  } else {
+    // Snow
+    for (let i = weatherParticles.length - 1; i >= 0; i--) {
+      const p = weatherParticles[i];
+      p.wobble += p.wobbleSpeed * dt;
+      p.x += (p.vx + Math.sin(p.wobble) * p.wobbleAmp) * dt;
+      p.y += p.vy * dt;
+
+      if (p.y > H + 10 || p.x < -20 || p.x > W + 20) {
+        weatherParticles.splice(i, 1);
+        continue;
+      }
+
+      weatherCtx.beginPath();
+      weatherCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      weatherCtx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+      weatherCtx.fill();
+    }
+
+    // Light fog overlay for snow atmosphere
+    weatherCtx.fillStyle = `rgba(200, 210, 220, ${0.05 * weatherIntensity})`;
+    weatherCtx.fillRect(0, 0, W, H);
   }
 }
 
 // ============================================================
-// DIFFICULTY
+// DIFFICULTY — fun wave progression
 // ============================================================
+const WAVE_DATA = [
+  { name: 'Sunday Morning',        tip: 'Easy peasy. Just a few cars.',                       emoji: '☀️' },
+  { name: 'School Run',            tip: 'A few more cars... you got this!',                   emoji: '🚸' },
+  { name: 'Coffee Rush',           tip: 'Everyone needs their latte. Rain incoming!',         emoji: '☕' },
+  { name: 'Lunch Hour Chaos',      tip: 'They\'re hangry and in a hurry.',                    emoji: '🍔' },
+  { name: 'Road Rage Begins',      tip: 'Honking intensifies. Stay calm!',                    emoji: '😤' },
+  { name: 'Snowpocalypse',         tip: 'Snow! Cars are slippery. Good luck!',                emoji: '❄️' },
+  { name: 'Rush Hour From Hell',   tip: 'This is fine. Everything is fine.',                   emoji: '🔥' },
+  { name: 'Grand Theft Intersection', tip: 'Maximum chaos. You asked for this.',              emoji: '💀' },
+  { name: 'Are You Still Alive?!', tip: 'Honestly, we\'re impressed.',                        emoji: '🏆' },
+  { name: 'Traffic God Mode',      tip: 'No mortal should see this wave.',                     emoji: '👑' },
+];
+
+let waveAnnounceTimeout = null;
+
+function getWaveData(w) {
+  if (w <= WAVE_DATA.length) return WAVE_DATA[w - 1];
+  // Beyond defined waves: cycle with escalating titles
+  const extra = w - WAVE_DATA.length;
+  return {
+    name: 'Wave ' + w + ': WHY',
+    tip: extra % 2 === 0 ? 'We ran out of wave names. You\'re a legend.' : 'Seriously, go outside.',
+    emoji: ['🤯', '💀', '👽', '🦄', '🫠'][extra % 5]
+  };
+}
+
+function showWaveAnnouncement(w) {
+  const data = getWaveData(w);
+  const el = document.getElementById('waveAnnounce');
+  el.querySelector('.wa-wave').textContent = data.emoji + ' Wave ' + w + ' ' + data.emoji;
+  el.querySelector('.wa-name').textContent = '"' + data.name + '"';
+  el.querySelector('.wa-tip').textContent = data.tip;
+
+  el.classList.remove('show', 'hide');
+  void el.offsetWidth; // force reflow
+  el.classList.add('show');
+
+  if (waveAnnounceTimeout) clearTimeout(waveAnnounceTimeout);
+  waveAnnounceTimeout = setTimeout(() => {
+    el.classList.remove('show');
+    el.classList.add('hide');
+  }, 2200);
+}
+
 function updateDifficulty(dt) {
   difficultyTimer += dt;
 
-  // Increase difficulty every ~8 seconds
-  const newWave = Math.floor(difficultyTimer / 8) + 1;
+  // Waves every 18 seconds — relaxed ramp
+  const newWave = Math.floor(difficultyTimer / 18) + 1;
   if (newWave !== wave) {
     wave = newWave;
-    spawnInterval = Math.max(0.4, 2.0 - (wave - 1) * 0.2);
-    carSpeed = Math.min(22, 9 + (wave - 1) * 1.5);
-    maxCarsPerSpawn = Math.min(4, 1 + Math.floor(wave / 2));
+
+    // Gentle difficulty curve — starts easy, ramps slowly
+    spawnInterval = Math.max(0.6, 3.5 - (wave - 1) * 0.22);
+    carSpeed = Math.min(18, 6 + (wave - 1) * 0.9);
+    maxCarsPerSpawn = Math.min(4, 1 + Math.floor(wave / 3));
+
+    // Weather progression
+    if (wave < 3) {
+      setWeather('clear', 0);
+    } else if (wave < 6) {
+      const rainIntensity = 0.25 + (wave - 3) * 0.2;
+      setWeather('rain', rainIntensity);
+    } else {
+      const snowIntensity = Math.min(1.0, 0.35 + (wave - 6) * 0.12);
+      setWeather('snow', snowIntensity);
+    }
+
+    showWaveAnnouncement(wave);
   }
 }
 
@@ -2273,81 +3120,39 @@ function onGestureResults(results) {
 
   if (numHands === 0) {
     currentGesture = 'NONE';
-    lastFistGesture = 'NONE';
-    gestureLabel.textContent = 'No hands — ALL GO';
+    gestureLabel.textContent = '😴 No hands — ALL GO';
     if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.ALL_GO;
     updateGestureUI();
     return;
   }
 
-  // Determine which hands are visible and if they're fists
-  // MediaPipe mirrors: 'Left' in results = your RIGHT hand, 'Right' = your LEFT hand
-  let realLeftIdx = -1, realRightIdx = -1;
-  for (let i = 0; i < results.multiHandedness.length; i++) {
-    if (results.multiHandedness[i].label === 'Right') realLeftIdx = i;  // mirrored
-    if (results.multiHandedness[i].label === 'Left') realRightIdx = i;  // mirrored
-  }
-
-  const hasRealLeft = realLeftIdx >= 0;
-  const hasRealRight = realRightIdx >= 0;
-  const leftIsFist = hasRealLeft && isFist(results.multiHandLandmarks[realLeftIdx]);
-  const rightIsFist = hasRealRight && isFist(results.multiHandLandmarks[realRightIdx]);
-
-  // Check for fist turn gestures (only during gameplay or tutorial step 3)
-  let fistGesture = 'NONE';
-  if (hasRealLeft && !hasRealRight && leftIsFist) {
-    fistGesture = 'LEFT_FIST';
-  } else if (hasRealRight && !hasRealLeft && rightIsFist) {
-    fistGesture = 'RIGHT_FIST';
-  }
-
-  // Edge detection: trigger turn only on fist appearing (not while held)
-  if (appPhase === 'playing' && turnCooldown <= 0) {
-    if (fistGesture === 'LEFT_FIST' && lastFistGesture !== 'LEFT_FIST') {
-      rotateCop(-1); // turn left (counter-clockwise)
-    } else if (fistGesture === 'RIGHT_FIST' && lastFistGesture !== 'RIGHT_FIST') {
-      rotateCop(1); // turn right (clockwise)
-    }
-  }
-  lastFistGesture = fistGesture;
-
-  // Only set traffic signals for OPEN hands (not fists)
-  if (fistGesture !== 'NONE') {
-    // Show fist label but don't change traffic signal
-    if (fistGesture === 'LEFT_FIST') {
-      currentGesture = 'LEFT_FIST';
-      gestureLabel.textContent = '✊ Left Fist — TURN LEFT';
-    } else {
-      currentGesture = 'RIGHT_FIST';
-      gestureLabel.textContent = '✊ Right Fist — TURN RIGHT';
-    }
-  } else if (numHands >= 2 || (hasRealLeft && hasRealRight)) {
+  // Position-based detection: use wrist X position (landmark 0)
+  // Screen is mirrored, so left side of video = right side of user
+  // We use 0.5 as the center cutoff
+  if (numHands >= 2) {
     currentGesture = 'BOTH';
     gestureLabel.textContent = '🙌 Both Hands — ALL STOP';
     if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.ALL_STOP;
-  } else if (hasRealLeft && !leftIsFist) {
-    currentGesture = 'LEFT';
-    gestureLabel.textContent = '🤚 Left Hand — E/W GO';
-    if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.EW_GO;
-  } else if (hasRealRight && !rightIsFist) {
-    currentGesture = 'RIGHT';
-    gestureLabel.textContent = '✋ Right Hand — N/S GO';
-    if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.NS_GO;
   } else {
-    currentGesture = 'NONE';
-    gestureLabel.textContent = 'No hands — ALL GO';
-    if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.ALL_GO;
+    // One hand: use its horizontal position to pick EW vs NS
+    const wrist = results.multiHandLandmarks[0][0];
+    // In mirrored video: wrist.x < 0.5 = hand is on RIGHT side of video = user's LEFT
+    if (wrist.x < 0.5) {
+      currentGesture = 'RIGHT';
+      gestureLabel.textContent = '✋ Hand Right → N/S GO';
+      if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.NS_GO;
+    } else {
+      currentGesture = 'LEFT';
+      gestureLabel.textContent = '🤚 Hand Left → E/W GO';
+      if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.EW_GO;
+    }
   }
 
   updateGestureUI();
 }
 
 function rotateCop(direction) {
-  // direction: 1 = clockwise, -1 = counter-clockwise
-  copFacingIndex = (copFacingIndex + direction + 4) % 4;
-  targetCameraAngle = copFacingIndex * (Math.PI / 2);
-  turnCooldown = 0.8; // prevent rapid turns
-  playWhistle();
+  // Rotation disabled — fixed camera angle
 }
 
 // ============================================================
@@ -2371,14 +3176,13 @@ function updateGestureUI() {
       startTutorial();
     }
   } else if (appPhase === 'tutorial') {
-    const expectedGestures = ['LEFT', 'RIGHT', 'BOTH', 'LEFT_FIST'];
+    const expectedGestures = ['LEFT', 'RIGHT', 'BOTH'];
     const expected = expectedGestures[tutorialStep];
     const tutDetect = document.getElementById('tutDetectLabel');
-    const gestureNames = { NONE: 'No hands', LEFT: '🤚 Left Hand', RIGHT: '✋ Right Hand', BOTH: '🙌 Both Hands', LEFT_FIST: '✊ Left Fist', RIGHT_FIST: '✊ Right Fist' };
+    const gestureNames = { NONE: 'No hands', LEFT: '🤚 Hand Left', RIGHT: '✋ Hand Right', BOTH: '🙌 Both Hands' };
     tutDetect.textContent = 'Detected: ' + (gestureNames[currentGesture] || currentGesture);
 
-    const isMatch = (currentGesture === expected) ||
-      (tutorialStep === 3 && (currentGesture === 'LEFT_FIST' || currentGesture === 'RIGHT_FIST'));
+    const isMatch = (currentGesture === expected);
 
     if (isMatch) {
       gestureHoldTimer = Math.min(gestureHoldTimer + dt, HOLD_DURATION);
@@ -2398,7 +3202,7 @@ function updateGestureUI() {
     updateRing('restartRingFg', gestureHoldTimer / HOLD_DURATION);
     if (gestureHoldTimer >= HOLD_DURATION) {
       gestureHoldTimer = 0;
-      startGame();
+      resetToStartScreen();
     }
   }
 }
@@ -2424,8 +3228,8 @@ function startTutorial() {
 }
 
 function updateTutorialUI() {
-  const steps = [document.getElementById('tutStep1'), document.getElementById('tutStep2'), document.getElementById('tutStep3'), document.getElementById('tutStep4')];
-  const checks = [document.getElementById('tutCheck1'), document.getElementById('tutCheck2'), document.getElementById('tutCheck3'), document.getElementById('tutCheck4')];
+  const steps = [document.getElementById('tutStep1'), document.getElementById('tutStep2'), document.getElementById('tutStep3')];
+  const checks = [document.getElementById('tutCheck1'), document.getElementById('tutCheck2'), document.getElementById('tutCheck3')];
   steps.forEach((s, i) => {
     s.classList.remove('active', 'done');
     if (i < tutorialStep) { s.classList.add('done'); checks[i].textContent = '✅'; }
@@ -2440,7 +3244,7 @@ function completeTutorialStep() {
   gestureHoldTimer = 0;
   tutorialStep++;
   playWhistle();
-  if (tutorialStep >= 4) {
+  if (tutorialStep >= 3) {
     // Tutorial complete, start game after brief pause
     setTimeout(() => {
       document.getElementById('tutorialScreen').classList.add('hidden');
@@ -2474,13 +3278,57 @@ document.addEventListener('keydown', (e) => {
       document.getElementById('tutorialScreen').classList.add('hidden');
       startGame();
     }
-    else if (appPhase === 'gameover') startGame();
+    else if (appPhase === 'gameover') resetToStartScreen();
   }
 });
 
 // ============================================================
 // GAME FLOW
 // ============================================================
+function resetToStartScreen() {
+  // Clean up scene
+  cars.forEach(c => {
+    scene.remove(c.mesh);
+    c.mesh.traverse(child => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    });
+  });
+  cars = [];
+  // Clean up crash debris
+  for (const obj of crashDebris) {
+    scene.remove(obj);
+    obj.traverse(child => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    });
+  }
+  crashDebris = [];
+  gameRunning = false;
+  gameOver = false;
+  if (gameOverTimeout) { clearTimeout(gameOverTimeout); gameOverTimeout = null; }
+
+  setWeather('clear', 0);
+  weatherParticles = [];
+  // Hide game over, show start screen
+  gameOverScreen.classList.add('hidden');
+  document.getElementById('tutorialScreen').classList.add('hidden');
+  crashFlash.classList.remove('active');
+  crashFlash.style.opacity = '0';
+  crashFlash.style.background = '';
+
+  appPhase = 'start';
+  gestureHoldTimer = 0;
+  startScreen.classList.remove('hidden');
+  renderer.render(scene, camera);
+}
+
 function startGame() {
   // Reset state
   cars.forEach(c => {
@@ -2494,11 +3342,23 @@ function startGame() {
     });
   });
   cars = [];
+  // Clean up crash debris
+  for (const obj of crashDebris) {
+    scene.remove(obj);
+    obj.traverse(child => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    });
+  }
+  crashDebris = [];
   score = 0;
   carsCleared = 0;
   wave = 1;
-  spawnInterval = 3.0;
-  carSpeed = 8;
+  spawnInterval = 4.0;
+  carSpeed = 6;
   maxCarsPerSpawn = 1;
   impatienceChance = 0;
   spawnTimer = 0;
@@ -2506,11 +3366,10 @@ function startGame() {
   signalState = SIGNAL_STATES.ALL_GO;
   pendingSignal = SIGNAL_STATES.ALL_GO;
   signalDebounceTimer = 0;
-  emergencyTimer = 0;
-  emergencyInterval = 25;
-  emergencyActive = false;
-  stopSiren();
-  if (emergencyWarningEl) emergencyWarningEl.classList.add('hidden');
+  honkTimer = 0;
+  nearMissFlashTimer = 0;
+  setWeather('clear', 0);
+  weatherParticles = [];
   copFacingIndex = 0;
   targetCameraAngle = 0;
   currentCameraAngle = 0;
@@ -2520,10 +3379,15 @@ function startGame() {
   gameRunning = true;
   appPhase = 'playing';
 
+  // Cancel any pending game-over overlay
+  if (gameOverTimeout) { clearTimeout(gameOverTimeout); gameOverTimeout = null; }
+
   startScreen.classList.add('hidden');
   gameOverScreen.classList.add('hidden');
   document.getElementById('tutorialScreen').classList.add('hidden');
   crashFlash.classList.remove('active');
+  crashFlash.style.opacity = '0';
+  crashFlash.style.background = '';
 
   clock.start();
   updateHUD();
@@ -2533,11 +3397,8 @@ function startGame() {
 function triggerGameOver(reason) {
   gameOver = true;
   gameRunning = false;
-  stopSiren();
-  if (emergencyWarningEl) emergencyWarningEl.classList.add('hidden');
-  emergencyActive = false;
-
   // Flash
+  crashFlash.style.background = 'rgba(255, 0, 0, 0.6)'; // reset to red for crash
   crashFlash.classList.add('active');
   setTimeout(() => crashFlash.classList.remove('active'), 300);
   setTimeout(() => {
@@ -2555,23 +3416,30 @@ function triggerGameOver(reason) {
   gestureHoldTimer = 0;
 
   // Show game over after a brief delay
-  setTimeout(() => {
+  gameOverTimeout = setTimeout(() => {
+    gameOverTimeout = null;
     finalScoreEl.textContent = score;
-    highScoreEl.textContent = 'High Score: ' + highScoreValue;
+    if (highScoreEl) highScoreEl.textContent = 'High Score: ' + highScoreValue;
     const titleEl = document.getElementById('gameOverTitle');
     const reasonEl = document.getElementById('gameOverReason');
-    if (reason === 'backup') {
-      titleEl.textContent = '🚗 GRIDLOCK!';
-      reasonEl.textContent = 'Traffic backed up off screen! Keep cars moving!';
-    } else if (reason === 'pedestrian') {
+    if (reason === 'pedestrian') {
       titleEl.textContent = '🚶 PEDESTRIAN HIT!';
       reasonEl.textContent = 'A car struck a pedestrian! Protect the crosswalks!';
-    } else if (reason === 'emergency') {
-      titleEl.textContent = '🚨 EMERGENCY CRASH!';
-      reasonEl.textContent = 'An emergency vehicle crashed! Signal ALL STOP to clear the way!';
     } else {
       titleEl.textContent = '💥 CRASH!';
       reasonEl.textContent = 'Two cars collided at the intersection!';
+    }
+    // Stats
+    document.getElementById('goWave').textContent = wave;
+    document.getElementById('goCleared').textContent = carsCleared;
+    const secs = Math.floor(difficultyTimer);
+    document.getElementById('goTime').textContent = secs >= 60 ? Math.floor(secs / 60) + 'm ' + (secs % 60) + 's' : secs + 's';
+    // New high score badge
+    const hsBadge = document.getElementById('newHighScoreBadge');
+    if (score > 0 && score >= highScoreValue) {
+      hsBadge.classList.remove('hidden');
+    } else {
+      hsBadge.classList.add('hidden');
     }
     gameOverScreen.classList.remove('hidden');
   }, 1000);
@@ -2579,7 +3447,8 @@ function triggerGameOver(reason) {
 
 function updateHUD() {
   scoreEl.textContent = 'Score: ' + score;
-  levelEl.textContent = 'Wave ' + wave;
+  const wd = getWaveData(wave);
+  levelEl.textContent = wd.emoji + ' Wave ' + wave;
   carsClearedEl.textContent = 'Cars cleared: ' + carsCleared;
 
   let signalText = 'ALL GO';
@@ -2617,9 +3486,10 @@ function animate() {
   // Update signal with debounce
   signalDebounceTimer += dt;
   if (pendingSignal !== signalState && signalDebounceTimer > 0.3) {
+    const wasStop = pendingSignal === SIGNAL_STATES.ALL_STOP;
     signalState = pendingSignal;
     signalDebounceTimer = 0;
-    playWhistle();
+    playWhistle(wasStop); // long whistle blast when stopping traffic
   }
 
   // Spawn cars
@@ -2629,16 +3499,46 @@ function animate() {
     spawnCars();
   }
 
+  // Honking from waiting cars
+  honkTimer += dt;
+  if (honkTimer >= honkInterval) {
+    honkTimer = 0;
+    honkInterval = 1.2 + Math.random() * 2.5; // randomize next honk interval
+    const waitingCars = cars.filter(c => !c.isPedestrian && c.state === 'waiting' && !c.isEmergency);
+    if (waitingCars.length > 0) {
+      // More waiting cars = more likely to honk, and angrier
+      const honkChance = Math.min(0.9, 0.2 + waitingCars.length * 0.15);
+      if (Math.random() < honkChance) {
+        // Pick a random waiting car to honk
+        const honker = waitingCars[Math.floor(Math.random() * waitingCars.length)];
+        if (honker.waitTime > 5) {
+          playAngryHonk(); // cars waiting 5+ seconds get angry
+        } else {
+          playHonk();
+        }
+      }
+    }
+  }
+
+  // Near-miss flash fade
+  if (nearMissFlashTimer > 0) {
+    nearMissFlashTimer -= dt;
+    crashFlash.style.background = 'rgba(255, 200, 0, 0.3)';
+    crashFlash.style.opacity = Math.max(0, nearMissFlashTimer / 0.5);
+  }
+
   // Update systems
   updateCars(dt);
-  updateEmergencyVehicles(dt, Date.now() / 1000);
+  updateBrakeLights();
+  // (Emergency vehicles removed)
   checkCollisions();
-  if (gameRunning) checkBackup();
   updateDifficulty(dt);
   updateCopAnimation(dt);
   updateCamera(dt);
   updateSignalMarkers(Date.now());
   updateHUD();
+
+  updateWeather(dt);
 
   renderer.render(scene, camera);
 }
@@ -2647,6 +3547,7 @@ function animate() {
 // INIT
 // ============================================================
 initScene();
+initWeather();
 renderer.render(scene, camera);
 
 // Start webcam + gesture detection immediately so UI is gesture-driven
