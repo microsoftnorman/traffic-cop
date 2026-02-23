@@ -603,19 +603,42 @@ function buildIntersection() {
     intersectionGroup.add(new THREE.Mesh(mergeGeometries(stopGeos), crossMat));
   }
 
-  // Corner sidewalks (just 4 meshes, merged)
-  const sw = 4;
+  // Continuous sidewalks along all roads + corner plazas
+  const sw = 3.5; // sidewalk width
   const swGeos = [];
+  const swH = 0.2;
+
+  // 4 corner plazas at the intersection
   [
     { x: ROAD_WIDTH / 2 + sw / 2, z: ROAD_WIDTH / 2 + sw / 2 },
     { x: -(ROAD_WIDTH / 2 + sw / 2), z: ROAD_WIDTH / 2 + sw / 2 },
     { x: ROAD_WIDTH / 2 + sw / 2, z: -(ROAD_WIDTH / 2 + sw / 2) },
     { x: -(ROAD_WIDTH / 2 + sw / 2), z: -(ROAD_WIDTH / 2 + sw / 2) }
   ].forEach(c => {
-    const g = new THREE.BoxGeometry(sw, 0.25, sw);
-    g.translate(c.x, 0.125, c.z);
+    const g = new THREE.BoxGeometry(sw, swH, sw);
+    g.translate(c.x, swH / 2, c.z);
     swGeos.push(g);
   });
+
+  // Sidewalks running along NS roads (left and right of road, above and below intersection)
+  const nsLen = ROAD_LENGTH - INTERSECTION_SIZE / 2 - sw / 2;
+  [1, -1].forEach(sideX => {
+    [1, -1].forEach(dirZ => {
+      const g = new THREE.BoxGeometry(sw, swH, nsLen);
+      g.translate(sideX * (ROAD_WIDTH / 2 + sw / 2), swH / 2, dirZ * (INTERSECTION_SIZE / 2 + sw / 2 + nsLen / 2));
+      swGeos.push(g);
+    });
+  });
+
+  // Sidewalks running along EW roads (above and below road, left and right of intersection)
+  [1, -1].forEach(sideZ => {
+    [1, -1].forEach(dirX => {
+      const g = new THREE.BoxGeometry(nsLen, swH, sw);
+      g.translate(dirX * (INTERSECTION_SIZE / 2 + sw / 2 + nsLen / 2), swH / 2, sideZ * (ROAD_WIDTH / 2 + sw / 2));
+      swGeos.push(g);
+    });
+  });
+
   const swMesh = new THREE.Mesh(mergeGeometries(swGeos), sidewalkMat);
   swMesh.receiveShadow = true;
   intersectionGroup.add(swMesh);
@@ -959,11 +982,16 @@ function buildEnvironment() {
 const VEHICLE_TYPES = [
   // --- Cars ---
   { name: 'sedan',      w: 1.8, h: 1.4, l: 3.2, speedMult: 1.0, weight: 5, cabinScale: 0.5, cabinH: 0.4, cabinZ: -0.05 },
-  { name: 'suv',        w: 2.0, h: 1.6, l: 3.6, speedMult: 0.95, weight: 4, cabinScale: 0.6, cabinH: 0.5, cabinZ: -0.02 },
-  { name: 'hatchback',  w: 1.7, h: 1.3, l: 2.8, speedMult: 1.05, weight: 5, cabinScale: 0.4, cabinH: 0.38, cabinZ: -0.15 },
+  { name: 'suv',        w: 2.0, h: 1.6, l: 3.6, speedMult: 0.95, weight: 3, cabinScale: 0.6, cabinH: 0.5, cabinZ: -0.02 },
+  { name: 'hatchback',  w: 1.7, h: 1.3, l: 2.8, speedMult: 1.05, weight: 4, cabinScale: 0.4, cabinH: 0.38, cabinZ: -0.15 },
+  { name: 'taxi',       w: 1.8, h: 1.4, l: 3.3, speedMult: 1.1, weight: 3, cabinScale: 0.5, cabinH: 0.4, cabinZ: -0.05 },
+  { name: 'police',     w: 1.9, h: 1.5, l: 3.4, speedMult: 1.15, weight: 2, cabinScale: 0.5, cabinH: 0.42, cabinZ: -0.05 },
+  { name: 'pickup',     w: 2.0, h: 1.6, l: 4.0, speedMult: 0.9, weight: 3, cabinScale: 0.35, cabinH: 0.45, cabinZ: 0.15 },
   // --- Big vehicles ---
   { name: 'bus',        w: 2.4, h: 2.8, l: 8.0, speedMult: 0.7, weight: 2, cabinScale: 0.85, cabinH: 0.7, cabinZ: 0 },
   { name: 'semi',       w: 2.4, h: 2.6, l: 9.5, speedMult: 0.6, weight: 1, cabinScale: 0.25, cabinH: 0.6, cabinZ: 0.35 },
+  { name: 'firetruck',  w: 2.3, h: 2.5, l: 7.0, speedMult: 0.85, weight: 1, cabinScale: 0.3, cabinH: 0.55, cabinZ: 0.3 },
+  { name: 'icecream',   w: 2.0, h: 2.6, l: 5.0, speedMult: 0.65, weight: 1, cabinScale: 0.35, cabinH: 0.5, cabinZ: 0.25 },
   // --- Small ---
   { name: 'motorcycle', w: 0.6, h: 1.2, l: 2.0, speedMult: 1.3, weight: 3, cabinScale: 0, cabinH: 0, cabinZ: 0 },
 ];
@@ -1110,6 +1138,165 @@ function createVehicle(directionKey) {
     sign.position.set(0, H * 0.85, L / 2 + 0.02);
     group.add(sign);
 
+  } else if (vt.name === 'firetruck') {
+    // --- FIRE TRUCK ---
+    const paintMat = new THREE.MeshStandardMaterial({ color: 0xcc1111, roughness: 0.3, metalness: 0.5 });
+    const chromeMat = sharedMat.chrome;
+
+    // Cab (front)
+    const cabW = W * 0.95, cabH = H * 0.7, cabL = L * 0.3;
+    const cabGeo = new THREE.BoxGeometry(cabW, cabH, cabL);
+    cabGeo.translate(0, cabH / 2 + 0.2, L / 2 - cabL / 2);
+    const cab = new THREE.Mesh(cabGeo, paintMat);
+    cab.castShadow = true;
+    group.add(cab);
+
+    // Cab windshield
+    const wGeo = new THREE.PlaneGeometry(cabW * 0.8, cabH * 0.45);
+    const wind = new THREE.Mesh(wGeo, sharedMat.glass);
+    wind.position.set(0, cabH * 0.65 + 0.2, L / 2 + 0.01);
+    group.add(wind);
+
+    // Rear body
+    const rearL = L * 0.6;
+    const rearGeo = new THREE.BoxGeometry(W, H * 0.65, rearL);
+    rearGeo.translate(0, H * 0.35 + 0.2, -rearL / 2 + L * 0.15);
+    const rear = new THREE.Mesh(rearGeo, paintMat);
+    rear.castShadow = true;
+    group.add(rear);
+
+    // Equipment compartments (side panels)
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.5, metalness: 0.4 });
+    const panelGeos = [];
+    [1, -1].forEach(side => {
+      const pg = new THREE.BoxGeometry(0.08, H * 0.3, rearL * 0.8);
+      pg.translate(side * (W / 2 + 0.04), H * 0.2 + 0.2, -rearL / 2 + L * 0.15);
+      panelGeos.push(pg);
+    });
+    group.add(new THREE.Mesh(mergeGeometries(panelGeos), panelMat));
+
+    // Ladder on top
+    const ladderGeos = [];
+    const ladderMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.7, roughness: 0.3 });
+    // Rails
+    [0.3, -0.3].forEach(x => {
+      const rg = new THREE.BoxGeometry(0.05, 0.05, rearL * 0.7);
+      rg.translate(x, H * 0.7 + 0.2, -rearL / 2 + L * 0.15);
+      ladderGeos.push(rg);
+    });
+    // Rungs
+    for (let r = -3; r <= 3; r++) {
+      const rg = new THREE.BoxGeometry(0.6, 0.04, 0.04);
+      rg.translate(0, H * 0.7 + 0.2, r * 0.5 - rearL / 4 + L * 0.15);
+      ladderGeos.push(rg);
+    }
+    group.add(new THREE.Mesh(mergeGeometries(ladderGeos), ladderMat));
+
+    // Light bar on cab roof (red flashing lights)
+    const lightBarGeos = [];
+    const lightBarMat = new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.8 });
+    [0.3, -0.3].forEach(x => {
+      const lg = new THREE.SphereGeometry(0.12, 6, 5);
+      lg.translate(x, cabH + 0.35, L / 2 - cabL / 2);
+      lightBarGeos.push(lg);
+    });
+    const lbBase = new THREE.BoxGeometry(0.9, 0.08, 0.3);
+    lbBase.translate(0, cabH + 0.2, L / 2 - cabL / 2);
+    group.add(new THREE.Mesh(lbBase, sharedMat.dark));
+    group.add(new THREE.Mesh(mergeGeometries(lightBarGeos), lightBarMat));
+
+    // Wheels + bumpers
+    const darkGeos = [];
+    const bumperGeo = new THREE.BoxGeometry(W + 0.1, H * 0.12, 0.2);
+    darkGeos.push(bumperGeo.clone().translate(0, 0.2, L / 2 + 0.08));
+    darkGeos.push(bumperGeo.clone().translate(0, 0.2, -L / 2 + L * 0.15 - rearL / 2 - 0.08));
+    const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.22, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [{ x: -W / 2, z: L * 0.38 }, { x: W / 2, z: L * 0.38 },
+     { x: -W / 2, z: -L * 0.25 }, { x: W / 2, z: -L * 0.25 },
+     { x: -W / 2, z: -L * 0.4 }, { x: W / 2, z: -L * 0.4 }].forEach(wp => {
+      darkGeos.push(wheelGeo.clone().translate(wp.x, 0.38, wp.z));
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+
+    // Chrome front grille
+    const grilleGeo = new THREE.PlaneGeometry(cabW * 0.6, cabH * 0.25);
+    const grille = new THREE.Mesh(grilleGeo, chromeMat);
+    grille.position.set(0, 0.45, L / 2 + 0.02);
+    group.add(grille);
+
+  } else if (vt.name === 'icecream') {
+    // --- ICE CREAM TRUCK ---
+    const paintMat = new THREE.MeshStandardMaterial({ color: 0xfff5ee, roughness: 0.4, metalness: 0.2 });
+
+    // Main body (boxy van shape)
+    const bodyGeo = new THREE.BoxGeometry(W, H * 0.85, L);
+    bodyGeo.translate(0, H * 0.45, 0);
+    const body = new THREE.Mesh(bodyGeo, paintMat);
+    body.castShadow = true;
+    group.add(body);
+
+    // Colorful stripes (pink and mint)
+    const stripeGeos = [];
+    const pinkMat = new THREE.MeshStandardMaterial({ color: 0xff69b4, roughness: 0.5 });
+    const mintMat = new THREE.MeshStandardMaterial({ color: 0x3eb489, roughness: 0.5 });
+    [1, -1].forEach(side => {
+      // Bottom pink stripe
+      const sg1 = new THREE.PlaneGeometry(L * 0.9, H * 0.15);
+      sg1.translate(0, H * 0.2, 0);
+      const m1 = new THREE.Mesh(sg1, pinkMat);
+      m1.position.x = side * (W / 2 + 0.01);
+      m1.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(m1);
+      // Top mint stripe
+      const sg2 = new THREE.PlaneGeometry(L * 0.9, H * 0.12);
+      sg2.translate(0, H * 0.55, 0);
+      const m2 = new THREE.Mesh(sg2, mintMat);
+      m2.position.x = side * (W / 2 + 0.01);
+      m2.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(m2);
+    });
+
+    // Serving window on one side
+    const servGeo = new THREE.PlaneGeometry(L * 0.25, H * 0.3);
+    const servMat = new THREE.MeshStandardMaterial({ color: 0x88ccee, transparent: true, opacity: 0.5 });
+    const serv = new THREE.Mesh(servGeo, servMat);
+    serv.position.set(W / 2 + 0.02, H * 0.45, -L * 0.15);
+    serv.rotation.y = Math.PI / 2;
+    group.add(serv);
+
+    // Front windshield
+    const wsGeo = new THREE.PlaneGeometry(W * 0.7, H * 0.35);
+    const ws = new THREE.Mesh(wsGeo, sharedMat.glass);
+    ws.position.set(0, H * 0.6, L / 2 + 0.01);
+    group.add(ws);
+
+    // Ice cream cone on top!
+    const coneGeo = new THREE.ConeGeometry(0.25, 0.5, 8);
+    coneGeo.translate(0, H * 0.85 + 0.25, 0);
+    const coneMat = new THREE.MeshStandardMaterial({ color: 0xd2a054, roughness: 0.6 });
+    group.add(new THREE.Mesh(coneGeo, coneMat));
+    // Scoops
+    const scoopColors = [0xff69b4, 0x8b4513, 0xfff8dc];
+    scoopColors.forEach((sc, i) => {
+      const sg = new THREE.SphereGeometry(0.22, 8, 6);
+      sg.translate((i - 1) * 0.18, H * 0.85 + 0.6 + i * 0.12, 0);
+      group.add(new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ color: sc, roughness: 0.5 })));
+    });
+
+    // Wheels + bumpers
+    const darkGeos = [];
+    const bumperGeo = new THREE.BoxGeometry(W + 0.05, H * 0.1, 0.15);
+    darkGeos.push(bumperGeo.clone().translate(0, 0.2, L / 2 + 0.05));
+    darkGeos.push(bumperGeo.clone().translate(0, 0.2, -L / 2 - 0.05));
+    const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.2, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [{ x: -W / 2, z: L * 0.3 }, { x: W / 2, z: L * 0.3 },
+     { x: -W / 2, z: -L * 0.3 }, { x: W / 2, z: -L * 0.3 }].forEach(wp => {
+      darkGeos.push(wheelGeo.clone().translate(wp.x, 0.35, wp.z));
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+
   } else if (vt.name === 'semi') {
     // --- SEMI TRUCK ---
     const color = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
@@ -1164,6 +1351,169 @@ function createVehicle(directionKey) {
     const pipeGeo2 = pipeGeo.clone();
     pipeGeo2.translate(-cabW - 0.16, 0, 0);
     group.add(new THREE.Mesh(mergeGeometries([pipeGeo, pipeGeo2]), sharedMat.chrome));
+
+  } else if (vt.name === 'taxi') {
+    // --- TAXI ---
+    const paintMat = new THREE.MeshStandardMaterial({ color: 0xf7d716, roughness: 0.3, metalness: 0.5 });
+
+    const bodyGeo = new THREE.BoxGeometry(W, H * 0.55, L);
+    bodyGeo.translate(0, H * 0.3 + 0.3, 0);
+    const bodyMesh = new THREE.Mesh(bodyGeo, paintMat);
+    bodyMesh.castShadow = true;
+    group.add(bodyMesh);
+
+    // Cabin
+    const cabinH = H * vt.cabinH;
+    const cabinL = L * vt.cabinScale;
+    const cabinW = W * 0.78;
+    const cabinGeo = new THREE.BoxGeometry(cabinW, cabinH, cabinL);
+    const cabin = new THREE.Mesh(cabinGeo, sharedMat.glass);
+    cabin.position.y = H * 0.55 + cabinH / 2 + 0.3;
+    cabin.position.z = L * vt.cabinZ;
+    group.add(cabin);
+
+    // TAXI sign on roof
+    const signGeo = new THREE.BoxGeometry(0.5, 0.2, 0.25);
+    const signMat = new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0xffee66, emissiveIntensity: 0.6 });
+    const sign = new THREE.Mesh(signGeo, signMat);
+    sign.position.y = H * 0.55 + cabinH + 0.4;
+    sign.position.z = L * vt.cabinZ;
+    group.add(sign);
+
+    // Dark door stripe
+    [1, -1].forEach(side => {
+      const dg = new THREE.PlaneGeometry(L * 0.12, H * 0.12);
+      const dm = new THREE.Mesh(dg, sharedMat.dark);
+      dm.position.set(side * (W / 2 + 0.01), H * 0.35, 0);
+      dm.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(dm);
+    });
+
+    // Dark parts (bumpers + wheels)
+    const darkGeos = [];
+    const bumperGeo = new THREE.BoxGeometry(W + 0.05, H * 0.2, 0.15);
+    darkGeos.push(bumperGeo.clone().translate(0, 0.35, L / 2 + 0.05));
+    darkGeos.push(bumperGeo.clone().translate(0, 0.35, -L / 2 - 0.05));
+    const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.18, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [{ x: -W / 2, z: L * 0.3 }, { x: W / 2, z: L * 0.3 },
+     { x: -W / 2, z: -L * 0.3 }, { x: W / 2, z: -L * 0.3 }].forEach(wp => {
+      darkGeos.push(wheelGeo.clone().translate(wp.x, 0.28, wp.z));
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+
+  } else if (vt.name === 'police') {
+    // --- POLICE CAR ---
+    const paintMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.3, metalness: 0.6 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+
+    // Body
+    const bodyGeo = new THREE.BoxGeometry(W, H * 0.55, L);
+    bodyGeo.translate(0, H * 0.3 + 0.3, 0);
+    const bodyMesh = new THREE.Mesh(bodyGeo, paintMat);
+    bodyMesh.castShadow = true;
+    group.add(bodyMesh);
+
+    // White door panels
+    [1, -1].forEach(side => {
+      const dg = new THREE.PlaneGeometry(L * 0.4, H * 0.3);
+      const dm = new THREE.Mesh(dg, whiteMat);
+      dm.position.set(side * (W / 2 + 0.01), H * 0.35, -L * 0.05);
+      dm.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(dm);
+    });
+
+    // Cabin
+    const cabinH = H * vt.cabinH;
+    const cabinL = L * vt.cabinScale;
+    const cabinW = W * 0.78;
+    const cabinGeo = new THREE.BoxGeometry(cabinW, cabinH, cabinL);
+    const cabin = new THREE.Mesh(cabinGeo, sharedMat.glass);
+    cabin.position.y = H * 0.55 + cabinH / 2 + 0.3;
+    cabin.position.z = L * vt.cabinZ;
+    group.add(cabin);
+
+    // Light bar on roof (red and blue)
+    const lbBase = new THREE.BoxGeometry(W * 0.6, 0.08, 0.35);
+    lbBase.translate(0, H * 0.55 + cabinH + 0.35, L * vt.cabinZ);
+    group.add(new THREE.Mesh(lbBase, sharedMat.dark));
+    const redLight = new THREE.SphereGeometry(0.1, 6, 5);
+    redLight.translate(-0.2, H * 0.55 + cabinH + 0.42, L * vt.cabinZ);
+    group.add(new THREE.Mesh(redLight, new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.9 })));
+    const blueLight = new THREE.SphereGeometry(0.1, 6, 5);
+    blueLight.translate(0.2, H * 0.55 + cabinH + 0.42, L * vt.cabinZ);
+    group.add(new THREE.Mesh(blueLight, new THREE.MeshStandardMaterial({ color: 0x0044ff, emissive: 0x0044ff, emissiveIntensity: 0.9 })));
+
+    // Dark parts (bumpers + wheels + push bar)
+    const darkGeos = [];
+    const bumperGeo = new THREE.BoxGeometry(W + 0.05, H * 0.2, 0.15);
+    darkGeos.push(bumperGeo.clone().translate(0, 0.35, L / 2 + 0.05));
+    darkGeos.push(bumperGeo.clone().translate(0, 0.35, -L / 2 - 0.05));
+    // Push bar
+    const pushBar = new THREE.BoxGeometry(W * 0.7, H * 0.25, 0.06);
+    darkGeos.push(pushBar.clone().translate(0, 0.35, L / 2 + 0.15));
+    const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.18, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [{ x: -W / 2, z: L * 0.3 }, { x: W / 2, z: L * 0.3 },
+     { x: -W / 2, z: -L * 0.3 }, { x: W / 2, z: -L * 0.3 }].forEach(wp => {
+      darkGeos.push(wheelGeo.clone().translate(wp.x, 0.28, wp.z));
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+
+  } else if (vt.name === 'pickup') {
+    // --- PICKUP TRUCK ---
+    const color = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+    const paintMat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.5 });
+
+    // Cab body (front half)
+    const cabL = L * 0.5;
+    const cabGeo = new THREE.BoxGeometry(W, H * 0.55, cabL);
+    cabGeo.translate(0, H * 0.3 + 0.3, L / 2 - cabL / 2);
+    const cabBody = new THREE.Mesh(cabGeo, paintMat);
+    cabBody.castShadow = true;
+    group.add(cabBody);
+
+    // Cabin
+    const cabinH = H * vt.cabinH;
+    const cabinL2 = cabL * 0.65;
+    const cabinW = W * 0.78;
+    const cabinGeo = new THREE.BoxGeometry(cabinW, cabinH, cabinL2);
+    const cabin = new THREE.Mesh(cabinGeo, sharedMat.glass);
+    cabin.position.y = H * 0.55 + cabinH / 2 + 0.3;
+    cabin.position.z = L / 2 - cabL * 0.45;
+    group.add(cabin);
+
+    // Truck bed (open back)
+    const bedL = L * 0.48;
+    const bedGeos = [];
+    // Floor
+    const floorGeo = new THREE.BoxGeometry(W * 0.95, 0.08, bedL);
+    floorGeo.translate(0, H * 0.28, -bedL / 2 + L * 0.02);
+    bedGeos.push(floorGeo);
+    // Side walls
+    [1, -1].forEach(side => {
+      const wg = new THREE.BoxGeometry(0.08, H * 0.3, bedL);
+      wg.translate(side * (W * 0.47), H * 0.42, -bedL / 2 + L * 0.02);
+      bedGeos.push(wg);
+    });
+    // Tailgate
+    const tgGeo = new THREE.BoxGeometry(W * 0.95, H * 0.3, 0.08);
+    tgGeo.translate(0, H * 0.42, -bedL + L * 0.02);
+    bedGeos.push(tgGeo);
+    group.add(new THREE.Mesh(mergeGeometries(bedGeos), paintMat));
+
+    // Dark parts (bumpers + wheels)
+    const darkGeos = [];
+    const bumperGeo = new THREE.BoxGeometry(W + 0.08, H * 0.18, 0.18);
+    darkGeos.push(bumperGeo.clone().translate(0, 0.32, L / 2 + 0.06));
+    darkGeos.push(bumperGeo.clone().translate(0, 0.32, -L / 2 - 0.06));
+    const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.2, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [{ x: -W / 2, z: L * 0.32 }, { x: W / 2, z: L * 0.32 },
+     { x: -W / 2, z: -L * 0.28 }, { x: W / 2, z: -L * 0.28 }].forEach(wp => {
+      darkGeos.push(wheelGeo.clone().translate(wp.x, 0.32, wp.z));
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
 
   } else {
     // --- STANDARD CAR (sedan / suv / hatchback) ---
