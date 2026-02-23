@@ -1270,47 +1270,58 @@ function createPedestrian() {
   const group = new THREE.Group();
   const skinColor = [0xe8b88a, 0xc68642, 0x8d5524, 0xf1c27d][Math.floor(Math.random() * 4)];
   const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
-  const shirtMat = new THREE.MeshStandardMaterial({ color: SHIRT_COLORS[Math.floor(Math.random() * SHIRT_COLORS.length)], roughness: 0.7 });
+  const shirtColor = SHIRT_COLORS[Math.floor(Math.random() * SHIRT_COLORS.length)];
+  const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.7 });
   const pantsMat = new THREE.MeshStandardMaterial({ color: PANTS_COLORS[Math.floor(Math.random() * PANTS_COLORS.length)], roughness: 0.7 });
   const hairMat = new THREE.MeshStandardMaterial({ color: HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)], roughness: 0.8 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
 
+  // Pedestrians are scaled 1.8x for visibility
+  const S = 1.8;
   // Build pedestrian (merged per material)
   const shirtGeos = [];
   const pantsGeos = [];
   const skinGeos = [];
+  const shoeGeos = [];
 
   // Torso
-  const torsoGeo = new THREE.BoxGeometry(0.3, 0.4, 0.2);
-  torsoGeo.translate(0, 1.0, 0);
+  const torsoGeo = new THREE.BoxGeometry(0.3 * S, 0.45 * S, 0.22 * S);
+  torsoGeo.translate(0, 1.0 * S, 0);
   shirtGeos.push(torsoGeo);
   // Arms
-  const armGeo = new THREE.BoxGeometry(0.1, 0.35, 0.1);
-  const aL = armGeo.clone(); aL.translate(-0.22, 0.95, 0); shirtGeos.push(aL);
-  const aR = armGeo.clone(); aR.translate(0.22, 0.95, 0); shirtGeos.push(aR);
+  const armGeo = new THREE.BoxGeometry(0.1 * S, 0.38 * S, 0.1 * S);
+  const aL = armGeo.clone(); aL.translate(-0.25 * S, 0.92 * S, 0); shirtGeos.push(aL);
+  const aR = armGeo.clone(); aR.translate(0.25 * S, 0.92 * S, 0); shirtGeos.push(aR);
 
   // Legs
-  const legGeo = new THREE.BoxGeometry(0.12, 0.45, 0.12);
-  const lL = legGeo.clone(); lL.translate(-0.09, 0.45, 0); pantsGeos.push(lL);
-  const lR = legGeo.clone(); lR.translate(0.09, 0.45, 0); pantsGeos.push(lR);
+  const legGeo = new THREE.BoxGeometry(0.13 * S, 0.45 * S, 0.13 * S);
+  const lL = legGeo.clone(); lL.translate(-0.09 * S, 0.45 * S, 0); pantsGeos.push(lL);
+  const lR = legGeo.clone(); lR.translate(0.09 * S, 0.45 * S, 0); pantsGeos.push(lR);
+
+  // Shoes (bright white for visibility)
+  const shoeGeo = new THREE.BoxGeometry(0.14 * S, 0.1 * S, 0.18 * S);
+  const sL = shoeGeo.clone(); sL.translate(-0.09 * S, 0.18 * S, 0.02 * S); shoeGeos.push(sL);
+  const sR = shoeGeo.clone(); sR.translate(0.09 * S, 0.18 * S, 0.02 * S); shoeGeos.push(sR);
 
   // Head
-  const headGeo = new THREE.SphereGeometry(0.14, 6, 5);
-  headGeo.translate(0, 1.38, 0);
+  const headGeo = new THREE.SphereGeometry(0.16 * S, 8, 6);
+  headGeo.translate(0, 1.42 * S, 0);
   skinGeos.push(headGeo);
   // Hands
-  const handGeo = new THREE.SphereGeometry(0.05, 4, 4);
-  const hL = handGeo.clone(); hL.translate(-0.22, 0.75, 0); skinGeos.push(hL);
-  const hR = handGeo.clone(); hR.translate(0.22, 0.75, 0); skinGeos.push(hR);
+  const handGeo = new THREE.SphereGeometry(0.06 * S, 5, 4);
+  const hL = handGeo.clone(); hL.translate(-0.25 * S, 0.7 * S, 0); skinGeos.push(hL);
+  const hR = handGeo.clone(); hR.translate(0.25 * S, 0.7 * S, 0); skinGeos.push(hR);
 
   // Hair
-  const hairGeo = new THREE.SphereGeometry(0.15, 6, 5);
+  const hairGeo = new THREE.SphereGeometry(0.17 * S, 8, 6);
   hairGeo.scale(1, 0.6, 1);
-  hairGeo.translate(0, 1.46, -0.02);
+  hairGeo.translate(0, 1.5 * S, -0.02 * S);
 
   group.add(new THREE.Mesh(mergeGeometries(shirtGeos), shirtMat));
   group.add(new THREE.Mesh(mergeGeometries(pantsGeos), pantsMat));
   group.add(new THREE.Mesh(mergeGeometries(skinGeos), skinMat));
   group.add(new THREE.Mesh(hairGeo, hairMat));
+  group.add(new THREE.Mesh(mergeGeometries(shoeGeos), shoeMat));
 
   // Position at edge of crosswalk
   const startPos = ROAD_WIDTH / 2 + 1.5;
@@ -1341,8 +1352,8 @@ function createPedestrian() {
     creepSpeed: 0,
     distanceFromCenter: startPos,
     cleared: false,
-    vehicleLength: 0.4,
-    vehicleWidth: 0.3,
+    vehicleLength: 0.7,
+    vehicleWidth: 0.5,
     vehicleType: 'pedestrian',
     isPedestrian: true,
     crossAxis: crossing.crossAxis,
@@ -1562,7 +1573,9 @@ function checkCollisions() {
         a.state = 'crashed';
         b.state = 'crashed';
         playCrash();
-        triggerGameOver('crash');
+        // Pedestrian hit by car = special game over
+        const pedHit = a.isPedestrian || b.isPedestrian;
+        triggerGameOver(pedHit ? 'pedestrian' : 'crash');
         return;
       }
     }
@@ -2015,6 +2028,9 @@ function triggerGameOver(reason) {
     if (reason === 'backup') {
       titleEl.textContent = '🚗 GRIDLOCK!';
       reasonEl.textContent = 'Traffic backed up off screen! Keep cars moving!';
+    } else if (reason === 'pedestrian') {
+      titleEl.textContent = '🚶 PEDESTRIAN HIT!';
+      reasonEl.textContent = 'A car struck a pedestrian! Protect the crosswalks!';
     } else {
       titleEl.textContent = '💥 CRASH!';
       reasonEl.textContent = 'Two cars collided at the intersection!';
