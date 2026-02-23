@@ -132,6 +132,10 @@
     background: rgba(0,0,0,0.7); color: #FFD700; text-align: center;
     padding: 5px 0; font-size: 14px; font-weight: bold;
   }
+  @keyframes emergencyPulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.05); }
+  }
 </style>
 </head>
 <body>
@@ -155,6 +159,11 @@
 
 <!-- Crash Flash -->
 <div id="crashFlash"></div>
+
+<!-- Emergency Warning -->
+<div id="emergencyWarning" class="hidden" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;pointer-events:none;text-align:center;">
+  <div style="background:rgba(180,0,0,0.85);color:#fff;font-size:28px;font-weight:bold;padding:12px 32px;border-radius:12px;border:3px solid #ff4444;animation:emergencyPulse 0.5s infinite alternate;text-shadow:0 0 10px rgba(255,0,0,0.8);">🚨 EMERGENCY VEHICLE APPROACHING 🚨<br><span style="font-size:18px;">Signal ALL STOP to clear the way!</span></div>
+</div>
 
 <!-- Start Screen -->
 <div id="startScreen" class="overlay">
@@ -295,6 +304,12 @@ let copModel;
 let copLeftArm, copRightArm;
 let highScoreValue = parseInt(localStorage.getItem('trafficCopHighScore') || '0');
 
+// Emergency vehicle state
+let emergencyTimer = 0;
+let emergencyInterval = 25; // seconds before first emergency vehicle
+let emergencyActive = false; // is there currently an emergency vehicle on screen?
+let emergencyWarningEl = null; // HUD element
+
 // Gesture-driven UI state
 let appPhase = 'start'; // 'start', 'tutorial', 'playing', 'gameover'
 let currentGesture = 'NONE'; // 'NONE', 'LEFT', 'RIGHT', 'BOTH'
@@ -369,6 +384,30 @@ function playScore() {
   gain.connect(audioCtx.destination);
   osc.start(audioCtx.currentTime);
   osc.stop(audioCtx.currentTime + 0.15);
+}
+
+// Siren for emergency vehicles — wailing oscillator
+let sirenOsc = null, sirenGain = null;
+function startSiren() {
+  ensureAudio();
+  if (sirenOsc) return;
+  sirenOsc = audioCtx.createOscillator();
+  sirenGain = audioCtx.createGain();
+  sirenOsc.type = 'sine';
+  sirenOsc.frequency.setValueAtTime(600, audioCtx.currentTime);
+  sirenGain.gain.setValueAtTime(0.07, audioCtx.currentTime);
+  sirenOsc.connect(sirenGain);
+  sirenGain.connect(audioCtx.destination);
+  sirenOsc.start();
+}
+function updateSiren(t) {
+  if (!sirenOsc) return;
+  // Wail between 600 and 1000 Hz
+  sirenOsc.frequency.setValueAtTime(800 + Math.sin(t * 4) * 200, audioCtx.currentTime);
+}
+function stopSiren() {
+  if (sirenOsc) { sirenOsc.stop(); sirenOsc.disconnect(); sirenOsc = null; }
+  if (sirenGain) { sirenGain.disconnect(); sirenGain = null; }
 }
 
 // DOM elements
@@ -996,6 +1035,13 @@ const VEHICLE_TYPES = [
   { name: 'motorcycle', w: 0.6, h: 1.2, l: 2.0, speedMult: 1.3, weight: 3, cabinScale: 0, cabinH: 0, cabinZ: 0 },
 ];
 
+// Emergency vehicle types (spawned separately, not in normal pool)
+const EMERGENCY_TYPES = [
+  { name: 'ambulance',  w: 2.1, h: 2.4, l: 5.5, speedMult: 1.2, weight: 1, cabinScale: 0.3, cabinH: 0.5, cabinZ: 0.25 },
+  { name: 'firetruck',  w: 2.3, h: 2.5, l: 7.0, speedMult: 0.95, weight: 1, cabinScale: 0.3, cabinH: 0.55, cabinZ: 0.3 },
+  { name: 'police',     w: 1.9, h: 1.5, l: 3.4, speedMult: 1.3, weight: 1, cabinScale: 0.5, cabinH: 0.42, cabinZ: -0.05 },
+];
+
 // Bus colors
 const BUS_COLORS = [0xddaa22, 0x2266aa, 0xcc3333, 0x22aa44, 0xee8833];
 
@@ -1024,9 +1070,9 @@ function getSharedCarMat() {
   return _sharedCarMat;
 }
 
-function createVehicle(directionKey) {
+function createVehicle(directionKey, forceType) {
   const dir = DIRECTIONS[directionKey];
-  const vt = pickVehicleType();
+  const vt = forceType || pickVehicleType();
   const sharedMat = getSharedCarMat();
   const group = new THREE.Group();
 
@@ -1193,17 +1239,23 @@ function createVehicle(directionKey) {
     group.add(new THREE.Mesh(mergeGeometries(ladderGeos), ladderMat));
 
     // Light bar on cab roof (red flashing lights)
-    const lightBarGeos = [];
-    const lightBarMat = new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.8 });
-    [0.3, -0.3].forEach(x => {
-      const lg = new THREE.SphereGeometry(0.12, 6, 5);
-      lg.translate(x, cabH + 0.35, L / 2 - cabL / 2);
-      lightBarGeos.push(lg);
-    });
+    const lightBarMat1 = new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.8 });
+    const lightBarMat2 = new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.8 });
+    const lg1 = new THREE.SphereGeometry(0.12, 6, 5);
+    lg1.translate(0.3, cabH + 0.35, L / 2 - cabL / 2);
+    const lm1 = new THREE.Mesh(lg1, lightBarMat1);
+    group.add(lm1);
+    const lg2 = new THREE.SphereGeometry(0.12, 6, 5);
+    lg2.translate(-0.3, cabH + 0.35, L / 2 - cabL / 2);
+    const lm2 = new THREE.Mesh(lg2, lightBarMat2);
+    group.add(lm2);
     const lbBase = new THREE.BoxGeometry(0.9, 0.08, 0.3);
     lbBase.translate(0, cabH + 0.2, L / 2 - cabL / 2);
     group.add(new THREE.Mesh(lbBase, sharedMat.dark));
-    group.add(new THREE.Mesh(mergeGeometries(lightBarGeos), lightBarMat));
+    group.userData.emergencyLights = [
+      { mesh: lm1, mat: lightBarMat1, color: 0xff0000 },
+      { mesh: lm2, mat: lightBarMat2, color: 0xff0000 }
+    ];
 
     // Wheels + bumpers
     const darkGeos = [];
@@ -1437,12 +1489,20 @@ function createVehicle(directionKey) {
     const lbBase = new THREE.BoxGeometry(W * 0.6, 0.08, 0.35);
     lbBase.translate(0, H * 0.55 + cabinH + 0.35, L * vt.cabinZ);
     group.add(new THREE.Mesh(lbBase, sharedMat.dark));
+    const redLightMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.9 });
     const redLight = new THREE.SphereGeometry(0.1, 6, 5);
     redLight.translate(-0.2, H * 0.55 + cabinH + 0.42, L * vt.cabinZ);
-    group.add(new THREE.Mesh(redLight, new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.9 })));
+    const rlMesh = new THREE.Mesh(redLight, redLightMat);
+    group.add(rlMesh);
+    const blueLightMat = new THREE.MeshStandardMaterial({ color: 0x0044ff, emissive: 0x0044ff, emissiveIntensity: 0.9 });
     const blueLight = new THREE.SphereGeometry(0.1, 6, 5);
     blueLight.translate(0.2, H * 0.55 + cabinH + 0.42, L * vt.cabinZ);
-    group.add(new THREE.Mesh(blueLight, new THREE.MeshStandardMaterial({ color: 0x0044ff, emissive: 0x0044ff, emissiveIntensity: 0.9 })));
+    const blMesh = new THREE.Mesh(blueLight, blueLightMat);
+    group.add(blMesh);
+    group.userData.emergencyLights = [
+      { mesh: rlMesh, mat: redLightMat, color: 0xff0000 },
+      { mesh: blMesh, mat: blueLightMat, color: 0x0044ff }
+    ];
 
     // Dark parts (bumpers + wheels + push bar)
     const darkGeos = [];
@@ -1514,6 +1574,91 @@ function createVehicle(directionKey) {
       darkGeos.push(wheelGeo.clone().translate(wp.x, 0.32, wp.z));
     });
     group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+
+  } else if (vt.name === 'ambulance') {
+    // --- AMBULANCE ---
+    const paintMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.3 });
+
+    // Cab (front)
+    const cabW = W * 0.95, cabH = H * 0.65, cabL = L * 0.3;
+    const cabGeo = new THREE.BoxGeometry(cabW, cabH, cabL);
+    cabGeo.translate(0, cabH / 2 + 0.2, L / 2 - cabL / 2);
+    const cab = new THREE.Mesh(cabGeo, paintMat);
+    cab.castShadow = true;
+    group.add(cab);
+
+    // Windshield
+    const wGeo = new THREE.PlaneGeometry(cabW * 0.8, cabH * 0.5);
+    const wind = new THREE.Mesh(wGeo, sharedMat.glass);
+    wind.position.set(0, cabH * 0.6 + 0.2, L / 2 + 0.01);
+    group.add(wind);
+
+    // Rear box (taller)
+    const rearL = L * 0.6;
+    const boxH = H * 0.85;
+    const rearGeo = new THREE.BoxGeometry(W, boxH, rearL);
+    rearGeo.translate(0, boxH / 2 + 0.2, -rearL / 2 + L * 0.15);
+    const rear = new THREE.Mesh(rearGeo, paintMat);
+    rear.castShadow = true;
+    group.add(rear);
+
+    // Red stripe along sides
+    const stripeMat = new THREE.MeshStandardMaterial({ color: 0xdd2222, roughness: 0.5 });
+    [1, -1].forEach(side => {
+      const sg = new THREE.PlaneGeometry(rearL * 0.85, boxH * 0.15);
+      const sm = new THREE.Mesh(sg, stripeMat);
+      sm.position.set(side * (W / 2 + 0.01), boxH * 0.45 + 0.2, -rearL / 2 + L * 0.15);
+      sm.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(sm);
+    });
+
+    // Red cross on rear
+    const crossMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xaa0000, emissiveIntensity: 0.3 });
+    const crossV = new THREE.PlaneGeometry(0.2, 0.8);
+    const crossH = new THREE.PlaneGeometry(0.8, 0.2);
+    const cv = new THREE.Mesh(crossV, crossMat);
+    cv.position.set(0, boxH * 0.55 + 0.2, -rearL + L * 0.15 - 0.01);
+    cv.rotation.y = Math.PI;
+    group.add(cv);
+    const ch = new THREE.Mesh(crossH, crossMat);
+    ch.position.set(0, boxH * 0.55 + 0.2, -rearL + L * 0.15 - 0.01);
+    ch.rotation.y = Math.PI;
+    group.add(ch);
+
+    // Light bar on top — red/blue flashing (stored for animation)
+    const lightBarBase = new THREE.BoxGeometry(0.9, 0.08, 0.3);
+    lightBarBase.translate(0, cabH + 0.25, L / 2 - cabL / 2);
+    group.add(new THREE.Mesh(lightBarBase, sharedMat.dark));
+
+    const redLightMat = new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 1.0 });
+    const blueLightMat = new THREE.MeshStandardMaterial({ color: 0x2222ff, emissive: 0x0000ff, emissiveIntensity: 1.0 });
+    const rlGeo = new THREE.SphereGeometry(0.12, 6, 5);
+    rlGeo.translate(-0.3, cabH + 0.35, L / 2 - cabL / 2);
+    const rlMesh = new THREE.Mesh(rlGeo, redLightMat);
+    group.add(rlMesh);
+    const blGeo = new THREE.SphereGeometry(0.12, 6, 5);
+    blGeo.translate(0.3, cabH + 0.35, L / 2 - cabL / 2);
+    const blMesh = new THREE.Mesh(blGeo, blueLightMat);
+    group.add(blMesh);
+
+    // Store light meshes for flashing animation
+    group.userData.emergencyLights = [
+      { mesh: rlMesh, mat: redLightMat, color: 0xff0000 },
+      { mesh: blMesh, mat: blueLightMat, color: 0x0000ff }
+    ];
+
+    // Wheels + bumpers
+    const darkGeos2 = [];
+    const bumperGeo2 = new THREE.BoxGeometry(W + 0.05, H * 0.12, 0.2);
+    darkGeos2.push(bumperGeo2.clone().translate(0, 0.2, L / 2 + 0.08));
+    darkGeos2.push(bumperGeo2.clone().translate(0, 0.2, -rearL + L * 0.15 - 0.08));
+    const wheelGeo2 = new THREE.CylinderGeometry(0.35, 0.35, 0.2, 8);
+    wheelGeo2.rotateZ(Math.PI / 2);
+    [{ x: -W / 2, z: L * 0.35 }, { x: W / 2, z: L * 0.35 },
+     { x: -W / 2, z: -L * 0.25 }, { x: W / 2, z: -L * 0.25 }].forEach(wp => {
+      darkGeos2.push(wheelGeo2.clone().translate(wp.x, 0.35, wp.z));
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos2), sharedMat.dark));
 
   } else {
     // --- STANDARD CAR (sedan / suv / hatchback) ---
@@ -1590,7 +1735,8 @@ function createVehicle(directionKey) {
     vehicleLength: L,
     vehicleWidth: W,
     vehicleType: vt.name,
-    isPedestrian: false
+    isPedestrian: false,
+    isEmergency: !!forceType
   };
 }
 
@@ -1703,6 +1849,23 @@ function createPedestrian() {
     crossFixed: crossing.fixedPos,
     pedBob: Math.random() * Math.PI * 2  // walking animation phase
   };
+}
+
+function spawnEmergencyVehicle() {
+  if (emergencyActive) return;
+  const availableDirs = Object.keys(DIRECTIONS);
+  const dirKey = availableDirs[Math.floor(Math.random() * availableDirs.length)];
+  const eType = EMERGENCY_TYPES[Math.floor(Math.random() * EMERGENCY_TYPES.length)];
+  const car = createVehicle(dirKey, eType);
+  car.speed = carSpeed * eType.speedMult; // consistent speed, no random variance
+  cars.push(car);
+  emergencyActive = true;
+
+  // Show warning
+  if (!emergencyWarningEl) emergencyWarningEl = document.getElementById('emergencyWarning');
+  emergencyWarningEl.classList.remove('hidden');
+
+  startSiren();
 }
 
 function spawnCars() {
@@ -1839,7 +2002,7 @@ function updateCars(dt) {
       if (Math.abs(newPos) > EXIT_DIST) {
         if (!car.cleared) {
           car.cleared = true;
-          score += 10;
+          score += car.isEmergency ? 50 : 10;
           carsCleared++;
           playScore();
         }
@@ -1870,6 +2033,7 @@ function updateCars(dt) {
 }
 
 function isCarSignaledToStop(car) {
+  if (car.isEmergency) return false; // emergency vehicles never stop
   const isNS = car.dirData.axis === 'z';
   if (signalState === SIGNAL_STATES.ALL_GO) return false;
   if (signalState === SIGNAL_STATES.ALL_STOP) return true;
@@ -1881,6 +2045,44 @@ function isCarSignaledToStop(car) {
 // ============================================================
 // COLLISION DETECTION
 // ============================================================
+function updateEmergencyVehicles(dt, t) {
+  // Spawn timer
+  if (!emergencyActive) {
+    emergencyTimer += dt;
+    if (emergencyTimer >= emergencyInterval) {
+      emergencyTimer = 0;
+      // After first spawn, reschedule between 15–25s
+      emergencyInterval = 15 + Math.random() * 10;
+      spawnEmergencyVehicle();
+    }
+  }
+
+  // Animate flashing lights + check if emergency cleared
+  let hasEmergency = false;
+  for (const car of cars) {
+    if (!car.isEmergency || car.state === 'crashed') continue;
+    hasEmergency = true;
+
+    // Flash lights alternating
+    const lights = car.mesh.userData.emergencyLights;
+    if (lights) {
+      const flash = Math.sin(t * 12) > 0;
+      lights[0].mat.emissiveIntensity = flash ? 1.5 : 0.1;
+      lights[1].mat.emissiveIntensity = flash ? 0.1 : 1.5;
+    }
+
+    // Update siren pitch
+    updateSiren(t);
+  }
+
+  // If no emergency vehicles remain, clear warning
+  if (!hasEmergency && emergencyActive) {
+    emergencyActive = false;
+    if (emergencyWarningEl) emergencyWarningEl.classList.add('hidden');
+    stopSiren();
+  }
+}
+
 function checkCollisions() {
   for (let i = 0; i < cars.length; i++) {
     for (let j = i + 1; j < cars.length; j++) {
@@ -1898,9 +2100,10 @@ function checkCollisions() {
         a.state = 'crashed';
         b.state = 'crashed';
         playCrash();
-        // Pedestrian hit by car = special game over
+        // Determine game over reason
         const pedHit = a.isPedestrian || b.isPedestrian;
-        triggerGameOver(pedHit ? 'pedestrian' : 'crash');
+        const emergencyHit = a.isEmergency || b.isEmergency;
+        triggerGameOver(pedHit ? 'pedestrian' : emergencyHit ? 'emergency' : 'crash');
         return;
       }
     }
@@ -2303,6 +2506,11 @@ function startGame() {
   signalState = SIGNAL_STATES.ALL_GO;
   pendingSignal = SIGNAL_STATES.ALL_GO;
   signalDebounceTimer = 0;
+  emergencyTimer = 0;
+  emergencyInterval = 25;
+  emergencyActive = false;
+  stopSiren();
+  if (emergencyWarningEl) emergencyWarningEl.classList.add('hidden');
   copFacingIndex = 0;
   targetCameraAngle = 0;
   currentCameraAngle = 0;
@@ -2325,6 +2533,9 @@ function startGame() {
 function triggerGameOver(reason) {
   gameOver = true;
   gameRunning = false;
+  stopSiren();
+  if (emergencyWarningEl) emergencyWarningEl.classList.add('hidden');
+  emergencyActive = false;
 
   // Flash
   crashFlash.classList.add('active');
@@ -2355,6 +2566,9 @@ function triggerGameOver(reason) {
     } else if (reason === 'pedestrian') {
       titleEl.textContent = '🚶 PEDESTRIAN HIT!';
       reasonEl.textContent = 'A car struck a pedestrian! Protect the crosswalks!';
+    } else if (reason === 'emergency') {
+      titleEl.textContent = '🚨 EMERGENCY CRASH!';
+      reasonEl.textContent = 'An emergency vehicle crashed! Signal ALL STOP to clear the way!';
     } else {
       titleEl.textContent = '💥 CRASH!';
       reasonEl.textContent = 'Two cars collided at the intersection!';
@@ -2417,6 +2631,7 @@ function animate() {
 
   // Update systems
   updateCars(dt);
+  updateEmergencyVehicles(dt, Date.now() / 1000);
   checkCollisions();
   if (gameRunning) checkBackup();
   updateDifficulty(dt);
