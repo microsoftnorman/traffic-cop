@@ -287,7 +287,7 @@ let difficultyTimer = 0;
 let spawnInterval = 3.0;    // seconds between spawns
 let carSpeed = 8;           // units per second
 let maxCarsPerSpawn = 1;
-let impatienceChance = 0;   // chance a car creeps forward on stop
+let impatienceChance = 0;
 let gestureActive = false;  // whether hand tracking is running
 let intersectionGroup;
 let signalMarkers = {};     // visual stop/go indicators
@@ -1579,17 +1579,12 @@ function createVehicle(directionKey) {
   group.rotation.y = dir.angle;
   scene.add(group);
 
-  const isImpatient = Math.random() < impatienceChance;
-
   return {
     mesh: group,
     direction: directionKey,
     dirData: dir,
     speed: carSpeed * vt.speedMult * (0.9 + Math.random() * 0.2),
     state: 'moving',
-    isImpatient,
-    impatienceTimer: 0,
-    creepSpeed: carSpeed * 0.15,
     distanceFromCenter: SPAWN_DIST,
     cleared: false,
     vehicleLength: L,
@@ -1697,9 +1692,6 @@ function createPedestrian() {
       : { axis: 'z', sign: crossing.sign, perpAxis: 'x', laneOffset: crossing.fixedPos, angle: crossing.sign > 0 ? Math.PI : 0 },
     speed: pedSpeed,
     state: 'moving',
-    isImpatient: false,
-    impatienceTimer: 0,
-    creepSpeed: 0,
     distanceFromCenter: startPos,
     cleared: false,
     vehicleLength: 0.7,
@@ -1858,23 +1850,6 @@ function updateCars(dt) {
         // Signal changed, start moving
         car.state = 'moving';
       }
-      // Impatient driver creeps
-      if (car.isImpatient && shouldStop) {
-        car.impatienceTimer += dt;
-        if (car.impatienceTimer > 2) {
-          const creep = car.creepSpeed * dt;
-          if (isNS) {
-            car.mesh.position.z -= dir.sign * creep;
-          } else {
-            car.mesh.position.x -= dir.sign * creep;
-          }
-          // If impatient car creeps into intersection, switch to moving
-          const newDist = Math.abs(isNS ? car.mesh.position.z : car.mesh.position.x);
-          if (newDist < STOP_LINE_DIST - 2) {
-            car.state = 'through';
-          }
-        }
-      }
     }
   }
 
@@ -1958,7 +1933,6 @@ function updateDifficulty(dt) {
     spawnInterval = Math.max(0.4, 2.0 - (wave - 1) * 0.2);
     carSpeed = Math.min(22, 9 + (wave - 1) * 1.5);
     maxCarsPerSpawn = Math.min(4, 1 + Math.floor(wave / 2));
-    impatienceChance = Math.min(0.5, (wave - 1) * 0.08);
   }
 }
 
