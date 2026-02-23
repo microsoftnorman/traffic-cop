@@ -1,0 +1,12 @@
+{
+  "name": "traffic-cop",
+  "version": "1.0.0",
+  "description": "3D Traffic Cop Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traffic Cop 3D</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #000; font-family: 'Segoe UI', Arial, sans-serif; }
+  #gameCanvas { display: block; width: 100vw; height: 100vh; }
+
+  /* Webcam feed */
+  #webcamContainer {
+    position: fixed; bottom: 16px; right: 16px; z-index: 100;
+    width: 200px; height: 150px; border-radius: 12px; overflow: hidden;
+    border: 3px solid rgba(255,255,255,0.7); box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  #webcam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  #gestureLabel {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.7); color: #fff; text-align: center;
+    padding: 4px 0; font-size: 13px; font-weight: bold; letter-spacing: 1px;
+  }
+
+  /* HUD */
+  #hud { position: fixed; top: 0; left: 0; right: 0; z-index: 90; pointer-events: none; }
+  #score {
+    position: absolute; top: 16px; left: 20px;
+    color: #fff; font-size: 28px; font-weight: bold;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.8);
+  }
+  #level {
+    position: absolute; top: 16px; right: 230px;
+    color: #FFD700; font-size: 22px; font-weight: bold;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.8);
+  }
+  #signalIndicator {
+    position: absolute; top: 52px; left: 20px;
+    color: #0f0; font-size: 16px; font-weight: bold;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+  }
+  #carsCleared {
+    position: absolute; top: 80px; left: 20px;
+    color: #aef; font-size: 15px;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+  }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 200;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.85);
+  }
+  .overlay h1 { color: #FFD700; font-size: 60px; margin-bottom: 10px; text-shadow: 0 0 30px rgba(255,215,0,0.6); }
+  .overlay h2 { color: #fff; font-size: 28px; margin-bottom: 20px; }
+  .overlay p { color: #ccc; font-size: 17px; max-width: 550px; text-align: center; line-height: 1.6; margin-bottom: 8px; }
+  .overlay .controls-info { color: #aef; font-size: 15px; margin: 16px 0; max-width: 500px; text-align: center; line-height: 1.7; }
+  .overlay button {
+    margin-top: 24px; padding: 14px 48px; font-size: 22px; font-weight: bold;
+    background: #FFD700; color: #222; border: none; border-radius: 10px; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 15px rgba(255,215,0,0.4);
+  }
+  .overlay button:hover { transform: scale(1.05); box-shadow: 0 6px 25px rgba(255,215,0,0.6); }
+  .overlay .score-final { color: #FFD700; font-size: 44px; font-weight: bold; margin: 10px 0; }
+  .overlay .high-score { color: #aaa; font-size: 18px; margin-bottom: 10px; }
+  .hidden { display: none !important; }
+
+  /* Crash flash */
+  #crashFlash {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 150;
+    background: rgba(255, 0, 0, 0.6); pointer-events: none; opacity: 0;
+    transition: opacity 0.1s;
+  }
+  #crashFlash.active { opacity: 1; }
+
+  /* Keyboard hint (fallback) */
+  #keyboardHint {
+    position: fixed; bottom: 16px; left: 16px; z-index: 100;
+    color: #888; font-size: 13px; background: rgba(0,0,0,0.6);
+    padding: 8px 14px; border-radius: 8px;
+  }
+
+  /* Gesture prompt (pulsing) */
+  .gesture-prompt {
+    margin-top: 18px; padding: 12px 30px; font-size: 20px; font-weight: bold;
+    color: #FFD700; background: rgba(255,215,0,0.12); border: 2px solid rgba(255,215,0,0.4);
+    border-radius: 12px; animation: gesturePulse 1.5s ease-in-out infinite;
+  }
+  @keyframes gesturePulse {
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50% { transform: scale(1.06); opacity: 1; }
+  }
+
+  /* Progress ring for gesture hold */
+  .hold-ring {
+    width: 80px; height: 80px; margin: 14px auto 0; position: relative;
+  }
+  .hold-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .hold-ring circle { fill: none; stroke-width: 6; }
+  .hold-ring .bg { stroke: rgba(255,255,255,0.15); }
+  .hold-ring .fg { stroke: #FFD700; stroke-dasharray: 226; stroke-dashoffset: 226; transition: stroke-dashoffset 0.1s linear; stroke-linecap: round; }
+  .hold-ring .label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #fff; font-size: 13px; font-weight: bold; text-align: center; }
+
+  /* Tutorial screen */
+  #tutorialScreen .tut-step {
+    display: flex; align-items: center; gap: 20px; margin: 10px 0;
+    padding: 14px 24px; border-radius: 12px; background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1); min-width: 420px; transition: all 0.3s;
+  }
+  #tutorialScreen .tut-step.active {
+    border-color: #FFD700; background: rgba(255,215,0,0.1);
+  }
+  #tutorialScreen .tut-step.done {
+    border-color: #2ecc71; background: rgba(46,204,113,0.1);
+  }
+  #tutorialScreen .tut-step .icon { font-size: 36px; }
+  #tutorialScreen .tut-step .info { text-align: left; }
+  #tutorialScreen .tut-step .info .title { color: #fff; font-size: 17px; font-weight: bold; }
+  #tutorialScreen .tut-step .info .desc { color: #aaa; font-size: 13px; margin-top: 2px; }
+  #tutorialScreen .tut-step .check { margin-left: auto; font-size: 24px; }
+
+  /* Webcam large (tutorial) */
+  #webcamLarge {
+    width: 280px; height: 210px; border-radius: 14px; overflow: hidden;
+    border: 3px solid rgba(255,255,255,0.5); margin: 16px auto 6px;
+    position: relative;
+  }
+  #webcamLarge video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  #webcamLarge .detect-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.7); color: #FFD700; text-align: center;
+    padding: 5px 0; font-size: 14px; font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="score">Score: 0</div>
+  <div id="level">Wave 1</div>
+  <div id="signalIndicator">Signal: ALL STOP</div>
+  <div id="carsCleared">Cars cleared: 0</div>
+  <div id="facingIndicator" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);color:#fff;font-size:18px;font-weight:bold;text-shadow:2px 2px 6px rgba(0,0,0,0.8);background:rgba(0,0,0,0.4);padding:6px 18px;border-radius:8px;">Facing: North</div>
+</div>
+
+<!-- Webcam -->
+<div id="webcamContainer" class="hidden">
+  <video id="webcam" autoplay playsinline></video>
+  <div id="gestureLabel">Detecting...</div>
+</div>
+
+<!-- Crash Flash -->
+<div id="crashFlash"></div>
+
+<!-- Start Screen -->
+<div id="startScreen" class="overlay">
+  <h1>🚦 Traffic Cop 3D</h1>
+  <h2>Direct Traffic with Your Hands!</h2>
+  <p>You're a traffic cop at a busy four-way intersection.<br>Control everything with hand gestures — no clicking needed!</p>
+  <div class="gesture-prompt" id="startGesturePrompt">✋ Raise BOTH hands to begin ✋</div>
+  <div class="hold-ring" id="startHoldRing">
+    <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="36"/><circle class="fg" id="startRingFg" cx="40" cy="40" r="36"/></svg>
+    <div class="label">Hold</div>
+  </div>
+  <p style="margin-top:14px; font-size:14px; color:#777">or press <b>SPACE</b></p>
+</div>
+
+<!-- Tutorial Screen -->
+<div id="tutorialScreen" class="overlay hidden">
+  <h2 style="margin-bottom:4px">🎓 Quick Tutorial</h2>
+  <p>Try each gesture — hold for 1 second to confirm</p>
+  <div id="webcamLarge"><video id="webcamTutorial" autoplay playsinline></video><div class="detect-label" id="tutDetectLabel">Waiting for camera...</div></div>
+  <div id="tutStep1" class="tut-step active">
+    <div class="icon">🤚</div>
+    <div class="info"><div class="title">Raise LEFT hand only</div><div class="desc">Lets East ↔ West traffic flow</div></div>
+    <div class="check" id="tutCheck1">⬜</div>
+  </div>
+  <div id="tutStep2" class="tut-step">
+    <div class="icon">✋</div>
+    <div class="info"><div class="title">Raise RIGHT hand only</div><div class="desc">Lets North ↔ South traffic flow</div></div>
+    <div class="check" id="tutCheck2">⬜</div>
+  </div>
+  <div id="tutStep3" class="tut-step">
+    <div class="icon">🙌</div>
+    <div class="info"><div class="title">Raise BOTH hands</div><div class="desc">ALL traffic STOPS</div></div>
+    <div class="check" id="tutCheck3">⬜</div>
+  </div>
+  <div id="tutStep4" class="tut-step">
+    <div class="icon">✊</div>
+    <div class="info"><div class="title">Show a FIST (left or right)</div><div class="desc">Turns your cop to face another road</div></div>
+    <div class="check" id="tutCheck4">⬜</div>
+  </div>
+  <div class="hold-ring" id="tutHoldRing" style="display:none">
+    <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="36"/><circle class="fg" id="tutRingFg" cx="40" cy="40" r="36"/></svg>
+    <div class="label">Hold</div>
+  </div>
+  <p id="tutSkipHint" style="margin-top:10px; font-size:13px; color:#666">Press SPACE to skip tutorial</p>
+</div>
+
+<!-- Game Over Screen -->
+<div id="gameOverScreen" class="overlay hidden">
+  <h1 id="gameOverTitle">💥 CRASH!</h1>
+  <h2>Game Over</h2>
+  <div class="score-final" id="finalScore">0</div>
+  <div class="high-score" id="highScore">High Score: 0</div>
+  <p id="gameOverReason">Two cars collided at the intersection!</p>
+  <div class="gesture-prompt">✋ Raise BOTH hands to play again ✋</div>
+  <div class="hold-ring" id="restartHoldRing">
+    <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="36"/><circle class="fg" id="restartRingFg" cx="40" cy="40" r="36"/></svg>
+    <div class="label">Hold</div>
+  </div>
+  <p style="margin-top:10px; font-size:14px; color:#777">or press <b>SPACE</b></p>
+</div>
+
+<!-- Keyboard hint -->
+<div id="keyboardHint" class="hidden">Keys: A=EW go | D=NS go | S=Stop | Q/E=Turn cop | Space=start</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const ROAD_WIDTH = 10;
+const ROAD_LENGTH = 60;
+const INTERSECTION_SIZE = ROAD_WIDTH;
+const CAR_LENGTH = 3.2;
+const CAR_WIDTH = 1.8;
+const CAR_HEIGHT = 1.4;
+const STOP_LINE_DIST = 7;  // distance from center where cars stop
+const SPAWN_DIST = 55;     // distance from center where cars spawn
+const EXIT_DIST = 60;      // distance from center where cars are removed
+const LANE_OFFSET = 2.2;   // offset from center line for each lane direction
+
+const DIRECTIONS = {
+  NORTH: { name: 'North', axis: 'z', sign: -1, perpAxis: 'x', laneOffset: -LANE_OFFSET, angle: 0 },
+  SOUTH: { name: 'South', axis: 'z', sign: 1,  perpAxis: 'x', laneOffset: LANE_OFFSET, angle: Math.PI },
+  EAST:  { name: 'East',  axis: 'x', sign: -1, perpAxis: 'z', laneOffset: LANE_OFFSET, angle: Math.PI / 2 },
+  WEST:  { name: 'West',  axis: 'x', sign: 1,  perpAxis: 'z', laneOffset: -LANE_OFFSET, angle: -Math.PI / 2 }
+};
+
+const SIGNAL_STATES = {
+  ALL_GO: 'ALL_GO',    // All traffic flows (no signal)
+  ALL_STOP: 'ALL_STOP',
+  EW_GO: 'EW_GO',     // East-West go, North-South stop
+  NS_GO: 'NS_GO'      // North-South go, East-West stop
+};
+
+const CAR_COLORS = [
+  0xe74c3c, 0x3498db, 0x2ecc71, 0xf39c12, 0x9b59b6,
+  0x1abc9c, 0xe67e22, 0xecf0f1, 0x34495e, 0xf1c40f,
+  0xd35400, 0x8e44ad, 0x16a085, 0x2980b9, 0xc0392b
+];
+
+// ============================================================
+// GAME STATE
+// ============================================================
+let scene, camera, renderer, clock;
+let cars = [];
+let score = 0;
+let carsCleared = 0;
+let wave = 1;
+let gameRunning = false;
+let gameOver = false;
+let signalState = SIGNAL_STATES.ALL_GO;
+let signalDebounceTimer = 0;
+let pendingSignal = SIGNAL_STATES.ALL_GO;
+let spawnTimer = 0;
+let difficultyTimer = 0;
+let spawnInterval = 3.0;    // seconds between spawns
+let carSpeed = 8;           // units per second
+let maxCarsPerSpawn = 1;
+let impatienceChance = 0;   // chance a car creeps forward on stop
+let gestureActive = false;  // whether hand tracking is running
+let intersectionGroup;
+let signalMarkers = {};     // visual stop/go indicators
+let copModel;
+let copLeftArm, copRightArm;
+let highScoreValue = parseInt(localStorage.getItem('trafficCopHighScore') || '0');
+
+// Gesture-driven UI state
+let appPhase = 'start'; // 'start', 'tutorial', 'playing', 'gameover'
+let currentGesture = 'NONE'; // 'NONE', 'LEFT', 'RIGHT', 'BOTH'
+let gestureHoldTimer = 0;
+let gestureHoldTarget = ''; // what gesture we're waiting for
+let tutorialStep = 0; // 0,1,2
+let handsRef = null; // MediaPipe hands instance
+const HOLD_DURATION = 1.0; // seconds to hold a gesture to confirm
+
+// Cop facing / camera orbit
+let copFacingIndex = 0; // 0=South view (looking North), 1=West (looking East), 2=North (looking South), 3=East (looking West)
+const FACING_NAMES = ['North', 'East', 'South', 'West'];
+const FACING_ANGLES = [0, Math.PI / 2, Math.PI, -Math.PI / 2]; // cop model Y rotation
+let targetCameraAngle = 0; // radians around Y axis
+let currentCameraAngle = 0;
+let turnCooldown = 0; // prevent rapid turns
+let lastFistGesture = 'NONE'; // track fist state for edge detection
+
+// ============================================================
+// AUDIO (Web Audio API - procedural sounds)
+// ============================================================
+let audioCtx;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playWhistle() {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+  osc.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.15);
+  osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.35);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.35);
+}
+
+function playCrash() {
+  ensureAudio();
+  const bufferSize = audioCtx.sampleRate * 0.8;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+  }
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
+  source.connect(gain);
+  gain.connect(audioCtx.destination);
+  source.start();
+}
+
+function playScore() {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+  osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.08);
+  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.15);
+}
+
+// DOM elements
+const canvas = document.getElementById('gameCanvas');
+const scoreEl = document.getElementById('score');
+const levelEl = document.getElementById('level');
+const signalIndicatorEl = document.getElementById('signalIndicator');
+const carsClearedEl = document.getElementById('carsCleared');
+const startScreen = document.getElementById('startScreen');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const finalScoreEl = document.getElementById('finalScore');
+const highScoreEl = document.getElementById('highScore');
+const crashFlash = document.getElementById('crashFlash');
+const gestureLabel = document.getElementById('gestureLabel');
+const webcamContainer = document.getElementById('webcamContainer');
+const keyboardHint = document.getElementById('keyboardHint');
+
+// ============================================================
+// THREE.JS SCENE SETUP
+// ============================================================
+function initScene() {
+  scene = new THREE.Scene();
+
+  // Gradient sky
+  const skyGeo = new THREE.SphereGeometry(150, 16, 10);
+  const skyColors = [];
+  const posAttr = skyGeo.getAttribute('position');
+  for (let i = 0; i < posAttr.count; i++) {
+    const y = posAttr.getY(i);
+    const t = Math.max(0, y / 150);
+    skyColors.push(0.53 + (0.15 - 0.53) * t, 0.81 + (0.35 - 0.81) * t, 0.92 + (0.75 - 0.92) * t);
+  }
+  skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(skyColors, 3));
+  scene.add(new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+
+  scene.fog = new THREE.FogExp2(0xc8dfe8, 0.008);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.set(0, 40, 35);
+  camera.lookAt(0, 0, -2);
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  clock = new THREE.Clock();
+
+  // Warm sunlight
+  const sunLight = new THREE.DirectionalLight(0xfff0dd, 1.5);
+  sunLight.position.set(40, 60, 30);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  sunLight.shadow.camera.left = -65;
+  sunLight.shadow.camera.right = 65;
+  sunLight.shadow.camera.top = 65;
+  sunLight.shadow.camera.bottom = -65;
+  sunLight.shadow.camera.near = 10;
+  sunLight.shadow.camera.far = 150;
+  sunLight.shadow.bias = -0.001;
+  sunLight.shadow.normalBias = 0.02;
+  scene.add(sunLight);
+
+  // Fill light (cool blue)
+  const fillLight = new THREE.DirectionalLight(0x8eb8ff, 0.4);
+  fillLight.position.set(-30, 30, -20);
+  scene.add(fillLight);
+
+  scene.add(new THREE.AmbientLight(0x606878, 0.5));
+  scene.add(new THREE.HemisphereLight(0x87CEEB, 0x3a5c2a, 0.35));
+
+  buildIntersection();
+  buildCop();
+  buildBuildings();
+  buildEnvironment();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}
+
+// Helper: create a canvas texture
+function makeCanvasTexture(width, height, drawFn) {
+  const c = document.createElement('canvas');
+  c.width = width; c.height = height;
+  const ctx = c.getContext('2d');
+  drawFn(ctx, width, height);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function buildIntersection() {
+  intersectionGroup = new THREE.Group();
+
+  // Grass ground
+  const grassTex = makeCanvasTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#4a7c3f';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 3000; i++) {
+      const shade = 60 + Math.random() * 40;
+      ctx.fillStyle = `rgb(${shade}, ${shade + 40 + Math.random() * 30|0}, ${shade - 10|0})`;
+      ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+  });
+  grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+  grassTex.repeat.set(4, 4);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),
+    new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.95 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.1;
+  ground.receiveShadow = true;
+  intersectionGroup.add(ground);
+
+  // Asphalt texture
+  const asphaltTex = makeCanvasTexture(128, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#3a3a3a';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2000; i++) {
+      const v = 40 + Math.random() * 30;
+      ctx.fillStyle = `rgb(${v|0}, ${v|0}, ${v|0})`;
+      ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2);
+    }
+  });
+  asphaltTex.wrapS = asphaltTex.wrapT = THREE.RepeatWrapping;
+  asphaltTex.repeat.set(2, 8);
+  const roadMat = new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: 0.85 });
+
+  const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xb0a898, roughness: 0.9 });
+  const curbMat = new THREE.MeshStandardMaterial({ color: 0xd0c8b8, roughness: 0.85 });
+
+  // Roads
+  const nsRoad = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH, ROAD_LENGTH * 2), roadMat);
+  nsRoad.rotation.x = -Math.PI / 2; nsRoad.receiveShadow = true;
+  intersectionGroup.add(nsRoad);
+
+  const asphaltTex2 = asphaltTex.clone();
+  asphaltTex2.repeat.set(8, 2);
+  const ewRoad = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_LENGTH * 2, ROAD_WIDTH),
+    new THREE.MeshStandardMaterial({ map: asphaltTex2, roughness: 0.85 }));
+  ewRoad.rotation.x = -Math.PI / 2; ewRoad.receiveShadow = true;
+  intersectionGroup.add(ewRoad);
+
+  const interPlane = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH, ROAD_WIDTH), roadMat);
+  interPlane.rotation.x = -Math.PI / 2; interPlane.position.y = 0.01; interPlane.receiveShadow = true;
+  intersectionGroup.add(interPlane);
+
+  // Merge all curbs into one mesh
+  const curbH = 0.15, curbW = 0.25;
+  const halfRd = ROAD_WIDTH / 2 + curbW / 2;
+  const halfInt = INTERSECTION_SIZE / 2 + curbW;
+  const curbGeos = [];
+  const addCurbGeo = (x, z, lenX, lenZ) => {
+    const g = new THREE.BoxGeometry(lenX, curbH, lenZ);
+    g.translate(x, curbH / 2, z);
+    curbGeos.push(g);
+  };
+  addCurbGeo(-halfRd, -(halfInt + ROAD_LENGTH / 2), curbW, ROAD_LENGTH - INTERSECTION_SIZE);
+  addCurbGeo(halfRd, -(halfInt + ROAD_LENGTH / 2), curbW, ROAD_LENGTH - INTERSECTION_SIZE);
+  addCurbGeo(-halfRd, (halfInt + ROAD_LENGTH / 2), curbW, ROAD_LENGTH - INTERSECTION_SIZE);
+  addCurbGeo(halfRd, (halfInt + ROAD_LENGTH / 2), curbW, ROAD_LENGTH - INTERSECTION_SIZE);
+  addCurbGeo(-(halfInt + ROAD_LENGTH / 2), -halfRd, ROAD_LENGTH - INTERSECTION_SIZE, curbW);
+  addCurbGeo(-(halfInt + ROAD_LENGTH / 2), halfRd, ROAD_LENGTH - INTERSECTION_SIZE, curbW);
+  addCurbGeo((halfInt + ROAD_LENGTH / 2), -halfRd, ROAD_LENGTH - INTERSECTION_SIZE, curbW);
+  addCurbGeo((halfInt + ROAD_LENGTH / 2), halfRd, ROAD_LENGTH - INTERSECTION_SIZE, curbW);
+  const curbMesh = new THREE.Mesh(mergeGeometries(curbGeos), curbMat);
+  curbMesh.receiveShadow = true;
+  intersectionGroup.add(curbMesh);
+
+  // Merge all lane dashes into one mesh
+  const dashGeos = [];
+  const yellowLineMat = new THREE.MeshStandardMaterial({ color: 0xf0c020, roughness: 0.7 });
+  for (let i = -ROAD_LENGTH; i < -INTERSECTION_SIZE / 2; i += 4) {
+    const g = new THREE.PlaneGeometry(0.15, 2); g.rotateX(-Math.PI / 2); g.translate(0, 0.02, i); dashGeos.push(g);
+  }
+  for (let i = INTERSECTION_SIZE / 2 + 2; i < ROAD_LENGTH; i += 4) {
+    const g = new THREE.PlaneGeometry(0.15, 2); g.rotateX(-Math.PI / 2); g.translate(0, 0.02, i); dashGeos.push(g);
+  }
+  for (let i = -ROAD_LENGTH; i < -INTERSECTION_SIZE / 2; i += 4) {
+    const g = new THREE.PlaneGeometry(2, 0.15); g.rotateX(-Math.PI / 2); g.translate(i, 0.02, 0); dashGeos.push(g);
+  }
+  for (let i = INTERSECTION_SIZE / 2 + 2; i < ROAD_LENGTH; i += 4) {
+    const g = new THREE.PlaneGeometry(2, 0.15); g.rotateX(-Math.PI / 2); g.translate(i, 0.02, 0); dashGeos.push(g);
+  }
+  if (dashGeos.length) {
+    const dashMesh = new THREE.Mesh(mergeGeometries(dashGeos), yellowLineMat);
+    intersectionGroup.add(dashMesh);
+  }
+
+  // Merge crosswalk stripes
+  const crossGeos = [];
+  const crossMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+  const addCrosswalkGeos = (cx, cz, isNS) => {
+    for (let s = -2; s <= 2; s += 1) {
+      const g = new THREE.PlaneGeometry(isNS ? 1 : 0.5, isNS ? 0.5 : 1);
+      g.rotateX(-Math.PI / 2);
+      g.translate(cx + (isNS ? s * 1.5 : 0), 0.025, cz + (isNS ? 0 : s * 1.5));
+      crossGeos.push(g);
+    }
+  };
+  addCrosswalkGeos(0, STOP_LINE_DIST + 1.2, true);
+  addCrosswalkGeos(0, -STOP_LINE_DIST - 1.2, true);
+  addCrosswalkGeos(STOP_LINE_DIST + 1.2, 0, false);
+  addCrosswalkGeos(-STOP_LINE_DIST - 1.2, 0, false);
+  if (crossGeos.length) {
+    intersectionGroup.add(new THREE.Mesh(mergeGeometries(crossGeos), crossMat));
+  }
+
+  // Merge stop lines
+  const stopGeos = [];
+  const addStopGeo = (x, z, label) => {
+    const isNS = label === 'NORTH' || label === 'SOUTH';
+    const offset = isNS ? (label === 'NORTH' ? -LANE_OFFSET : LANE_OFFSET) : (label === 'EAST' ? LANE_OFFSET : -LANE_OFFSET);
+    const g = new THREE.PlaneGeometry(isNS ? ROAD_WIDTH * 0.45 : 0.4, isNS ? 0.4 : ROAD_WIDTH * 0.45);
+    g.rotateX(-Math.PI / 2);
+    if (isNS) g.translate(offset, 0.02, z);
+    else g.translate(x, 0.02, offset);
+    stopGeos.push(g);
+  };
+  addStopGeo(0, STOP_LINE_DIST, 'NORTH');
+  addStopGeo(0, -STOP_LINE_DIST, 'SOUTH');
+  addStopGeo(STOP_LINE_DIST, 0, 'WEST');
+  addStopGeo(-STOP_LINE_DIST, 0, 'EAST');
+  if (stopGeos.length) {
+    intersectionGroup.add(new THREE.Mesh(mergeGeometries(stopGeos), crossMat));
+  }
+
+  // Corner sidewalks (just 4 meshes, merged)
+  const sw = 4;
+  const swGeos = [];
+  [
+    { x: ROAD_WIDTH / 2 + sw / 2, z: ROAD_WIDTH / 2 + sw / 2 },
+    { x: -(ROAD_WIDTH / 2 + sw / 2), z: ROAD_WIDTH / 2 + sw / 2 },
+    { x: ROAD_WIDTH / 2 + sw / 2, z: -(ROAD_WIDTH / 2 + sw / 2) },
+    { x: -(ROAD_WIDTH / 2 + sw / 2), z: -(ROAD_WIDTH / 2 + sw / 2) }
+  ].forEach(c => {
+    const g = new THREE.BoxGeometry(sw, 0.25, sw);
+    g.translate(c.x, 0.125, c.z);
+    swGeos.push(g);
+  });
+  const swMesh = new THREE.Mesh(mergeGeometries(swGeos), sidewalkMat);
+  swMesh.receiveShadow = true;
+  intersectionGroup.add(swMesh);
+
+  // Manhole covers (merged)
+  const manholeGeos = [];
+  const manholeMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.5 });
+  [{ x: -2, z: -20 }, { x: 3, z: 18 }, { x: -18, z: 2 }, { x: 22, z: -1 }].forEach(p => {
+    const g = new THREE.CircleGeometry(0.5, 8);
+    g.rotateX(-Math.PI / 2);
+    g.translate(p.x, 0.015, p.z);
+    manholeGeos.push(g);
+  });
+  intersectionGroup.add(new THREE.Mesh(mergeGeometries(manholeGeos), manholeMat));
+
+  // Signal markers (these need to update per-frame, so keep as individual meshes)
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 });
+  const housingMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.5 });
+  const postGeo = new THREE.CylinderGeometry(0.08, 0.08, 2.5, 6);
+  const lightGeo = new THREE.SphereGeometry(0.35, 8, 8);
+  const housingGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.15, 6);
+
+  // Merge all signal posts into one static mesh
+  const signalPostGeos = [];
+  const signalHousingGeos = [];
+
+  ['NORTH', 'SOUTH', 'EAST', 'WEST'].forEach(dir => {
+    const d = DIRECTIONS[dir];
+    const px = d.axis === 'z' ? d.laneOffset : STOP_LINE_DIST * d.sign;
+    const pz = d.axis === 'z' ? STOP_LINE_DIST * d.sign : d.laneOffset;
+
+    const pg = postGeo.clone(); pg.translate(px, 0, pz); signalPostGeos.push(pg);
+    const hg = housingGeo.clone(); hg.translate(px, 1.25, pz); signalHousingGeos.push(hg);
+
+    // Signal light (needs individual material for color updates)
+    const mat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.8 });
+    const marker = new THREE.Mesh(lightGeo, mat);
+    marker.position.set(px, 1.25, pz);
+    intersectionGroup.add(marker);
+    signalMarkers[dir] = marker;
+  });
+  intersectionGroup.add(new THREE.Mesh(mergeGeometries(signalPostGeos), postMat));
+  intersectionGroup.add(new THREE.Mesh(mergeGeometries(signalHousingGeos), housingMat));
+
+  scene.add(intersectionGroup);
+}
+
+function buildCop() {
+  copModel = new THREE.Group();
+  const uniformBlue = 0x1a3a6a;
+  const uniformMat = new THREE.MeshStandardMaterial({ color: uniformBlue, roughness: 0.7 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xe8b88a, roughness: 0.6 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5 });
+  const beltMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.4, metalness: 0.2 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+
+  // Merge static body parts into one mesh per material
+  const darkGeos = [];
+  const uniformGeos = [];
+  const skinGeos = [];
+
+  // Legs
+  const legGeo = new THREE.CylinderGeometry(0.17, 0.14, 1.1, 6);
+  const lgL = legGeo.clone(); lgL.translate(-0.22, 0.55, 0); darkGeos.push(lgL);
+  const lgR = legGeo.clone(); lgR.translate(0.22, 0.55, 0); darkGeos.push(lgR);
+
+  // Shoes
+  const shoeGeo = new THREE.BoxGeometry(0.25, 0.12, 0.35);
+  const shL = shoeGeo.clone(); shL.translate(-0.22, 0.06, 0.05); darkGeos.push(shL);
+  const shR = shoeGeo.clone(); shR.translate(0.22, 0.06, 0.05); darkGeos.push(shR);
+
+  // Torso
+  const torsoGeo = new THREE.CylinderGeometry(0.45, 0.35, 1.6, 8);
+  torsoGeo.translate(0, 1.9, 0);
+  uniformGeos.push(torsoGeo);
+
+  // Neck
+  const neckGeo = new THREE.CylinderGeometry(0.15, 0.18, 0.2, 6);
+  neckGeo.translate(0, 2.75, 0);
+  skinGeos.push(neckGeo);
+
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.38, 10, 8);
+  headGeo.scale(1, 1.05, 0.95);
+  headGeo.translate(0, 3.1, 0);
+  skinGeos.push(headGeo);
+
+  // Merged body meshes
+  const darkBody = new THREE.Mesh(mergeGeometries(darkGeos), darkMat);
+  darkBody.castShadow = true;
+  copModel.add(darkBody);
+  const uniformBody = new THREE.Mesh(mergeGeometries(uniformGeos), uniformMat);
+  uniformBody.castShadow = true;
+  copModel.add(uniformBody);
+  const skinBody = new THREE.Mesh(mergeGeometries(skinGeos), skinMat);
+  skinBody.castShadow = true;
+  copModel.add(skinBody);
+
+  // Small details merged (belt, buckle, badge, hat, eyes, whistle)
+  const detailGeos = [];
+  // Belt
+  const beltGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.12, 8);
+  beltGeo.translate(0, 1.2, 0); detailGeos.push(beltGeo);
+  const beltMesh = new THREE.Mesh(mergeGeometries(detailGeos), beltMat);
+  copModel.add(beltMesh);
+
+  // Gold details merged
+  const goldGeos = [];
+  const buckleGeo = new THREE.BoxGeometry(0.12, 0.1, 0.04);
+  buckleGeo.translate(0, 1.2, 0.38); goldGeos.push(buckleGeo);
+  const badgeGeo = new THREE.CircleGeometry(0.12, 6);
+  badgeGeo.translate(-0.2, 2.3, 0.46); goldGeos.push(badgeGeo);
+  const hatBadgeGeo = new THREE.CircleGeometry(0.08, 6);
+  hatBadgeGeo.translate(0, 3.5, 0.5); goldGeos.push(hatBadgeGeo);
+  copModel.add(new THREE.Mesh(mergeGeometries(goldGeos), goldMat));
+
+  // Hat merged
+  const hatMat = new THREE.MeshStandardMaterial({ color: 0x0f1f3f, roughness: 0.5 });
+  const hatGeos = [];
+  const hatBrimGeo = new THREE.CylinderGeometry(0.48, 0.52, 0.04, 10);
+  hatBrimGeo.translate(0, 3.42, 0); hatGeos.push(hatBrimGeo);
+  const hatTopGeo = new THREE.CylinderGeometry(0.2, 0.38, 0.3, 10);
+  hatTopGeo.translate(0, 3.58, 0); hatGeos.push(hatTopGeo);
+  const visorGeo = new THREE.BoxGeometry(0.5, 0.03, 0.25);
+  visorGeo.translate(0, 3.42, 0.3); hatGeos.push(visorGeo);
+  copModel.add(new THREE.Mesh(mergeGeometries(hatGeos), hatMat));
+
+  // Eyes merged
+  const eyeGeos = [];
+  const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
+  const e1 = eyeGeo.clone(); e1.translate(-0.12, 3.15, 0.35); eyeGeos.push(e1);
+  const e2 = eyeGeo.clone(); e2.translate(0.12, 3.15, 0.35); eyeGeos.push(e2);
+  copModel.add(new THREE.Mesh(mergeGeometries(eyeGeos), new THREE.MeshStandardMaterial({ color: 0xffffff })));
+
+  const pupilGeos = [];
+  const pupilGeo = new THREE.SphereGeometry(0.035, 6, 6);
+  const p1 = pupilGeo.clone(); p1.translate(-0.12, 3.15, 0.39); pupilGeos.push(p1);
+  const p2 = pupilGeo.clone(); p2.translate(0.12, 3.15, 0.39); pupilGeos.push(p2);
+  copModel.add(new THREE.Mesh(mergeGeometries(pupilGeos), new THREE.MeshStandardMaterial({ color: 0x2a1a0a })));
+
+  // Arms (need to remain separate groups for animation)
+  const armGeo = new THREE.CylinderGeometry(0.13, 0.11, 0.7, 6);
+  const forearmGeo = new THREE.CylinderGeometry(0.1, 0.09, 0.6, 6);
+  const handGeo = new THREE.SphereGeometry(0.1, 6, 6);
+  const gloveMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+
+  // Merge arm parts within each arm group
+  copLeftArm = new THREE.Group();
+  copLeftArm.position.set(-0.55, 2.5, 0);
+  const leftArmGeos = [];
+  const laUpper = armGeo.clone(); laUpper.translate(0, -0.35, 0); leftArmGeos.push(laUpper);
+  const laFore = forearmGeo.clone(); laFore.translate(0, -0.85, 0); leftArmGeos.push(laFore);
+  const leftArmMesh = new THREE.Mesh(mergeGeometries(leftArmGeos), uniformMat);
+  leftArmMesh.castShadow = true;
+  copLeftArm.add(leftArmMesh);
+  const lHand = new THREE.Mesh(handGeo, gloveMat);
+  lHand.position.set(0, -1.15, 0); lHand.scale.set(1, 0.7, 1.2);
+  copLeftArm.add(lHand);
+  copModel.add(copLeftArm);
+
+  copRightArm = new THREE.Group();
+  copRightArm.position.set(0.55, 2.5, 0);
+  const rightArmGeos = [];
+  const raUpper = armGeo.clone(); raUpper.translate(0, -0.35, 0); rightArmGeos.push(raUpper);
+  const raFore = forearmGeo.clone(); raFore.translate(0, -0.85, 0); rightArmGeos.push(raFore);
+  const rightArmMesh = new THREE.Mesh(mergeGeometries(rightArmGeos), uniformMat);
+  rightArmMesh.castShadow = true;
+  copRightArm.add(rightArmMesh);
+  const rHand = new THREE.Mesh(handGeo, gloveMat);
+  rHand.position.set(0, -1.15, 0); rHand.scale.set(1, 0.7, 1.2);
+  copRightArm.add(rHand);
+  copModel.add(copRightArm);
+
+  copModel.position.set(0, 0, 0);
+  scene.add(copModel);
+}
+
+function buildBuildings() {
+  const buildingColors = [
+    0x8B7355, 0x9B8B7A, 0xA0522D, 0x6B6F74, 0x8899aa,
+    0xB8860B, 0x9BA595, 0xC4A882, 0x7B8B6F, 0x887766,
+    0xA89070, 0x7A8998
+  ];
+
+  const positions = [
+    { x: 16, z: -16, w: 9, h: 14, d: 9 },
+    { x: 28, z: -15, w: 7, h: 9, d: 11 },
+    { x: 17, z: -30, w: 11, h: 18, d: 7 },
+    { x: 30, z: -30, w: 8, h: 11, d: 8 },
+    { x: -16, z: -16, w: 9, h: 11, d: 9 },
+    { x: -28, z: -19, w: 8, h: 16, d: 8 },
+    { x: -19, z: -32, w: 11, h: 10, d: 9 },
+    { x: -32, z: -32, w: 7, h: 13, d: 7 },
+    { x: 16, z: 16, w: 9, h: 12, d: 9 },
+    { x: 30, z: 17, w: 8, h: 8, d: 10 },
+    { x: 16, z: 30, w: 10, h: 15, d: 8 },
+    { x: -16, z: 16, w: 9, h: 10, d: 9 },
+    { x: -27, z: 18, w: 7, h: 17, d: 9 },
+    { x: -18, z: 30, w: 11, h: 9, d: 7 },
+    { x: -30, z: 30, w: 8, h: 12, d: 8 }
+  ];
+
+  // Bake windows into building face textures to eliminate per-window meshes
+  function makeBuildingTexture(faceWidth, faceHeight) {
+    return makeCanvasTexture(128, 256, (ctx, w, h) => {
+      const scaleX = w / faceWidth;
+      const scaleY = h / faceHeight;
+      ctx.fillStyle = '#00000000'; // transparent (will be overlaid by material color)
+      ctx.clearRect(0, 0, w, h);
+      // Windows
+      for (let wy = 2; wy < faceHeight - 1; wy += 2.8) {
+        for (let wx = 1.5; wx < faceWidth - 1; wx += 2.2) {
+          const isLit = Math.random() > 0.5;
+          ctx.fillStyle = isLit ? '#ffeebb' : '#88aacc';
+          const wx2 = wx * scaleX;
+          const wy2 = h - (wy + 1.3) * scaleY; // flip Y
+          ctx.fillRect(wx2, wy2, 0.9 * scaleX, 1.3 * scaleY);
+        }
+      }
+    });
+  }
+
+  const ledgeMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.7 });
+  const roofGeos = [];
+
+  positions.forEach((p, i) => {
+    const color = buildingColors[i % buildingColors.length];
+
+    // Create textured materials for each face pair
+    const texFront = makeBuildingTexture(p.w, p.h);
+    const texSide = makeBuildingTexture(p.d, p.h);
+
+    // Building with face materials
+    const geo = new THREE.BoxGeometry(p.w, p.h, p.d);
+    const baseMat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.05 });
+    const frontMat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.05, map: texFront });
+    const sideMat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.05, map: texSide });
+    // BoxGeometry face order: +x, -x, +y, -y, +z, -z
+    const building = new THREE.Mesh(geo, [sideMat, sideMat, baseMat, baseMat, frontMat, frontMat]);
+    building.position.set(p.x, p.h / 2, p.z);
+    building.castShadow = true;
+    building.receiveShadow = true;
+    scene.add(building);
+
+    // Collect rooftop ledge geo
+    const lg = new THREE.BoxGeometry(p.w + 0.3, 0.3, p.d + 0.3);
+    lg.translate(p.x, p.h + 0.15, p.z);
+    roofGeos.push(lg);
+  });
+
+  // Single merged mesh for all rooftop ledges
+  if (roofGeos.length) {
+    const roofMesh = new THREE.Mesh(mergeGeometries(roofGeos), ledgeMat);
+    roofMesh.castShadow = true;
+    scene.add(roofMesh);
+  }
+}
+
+function buildEnvironment() {
+  // Merge ALL trees into 2 meshes (trunks + canopies)
+  const trunkGeos = [];
+  const canopyGeos = [];
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.9 });
+  const canopyMat = new THREE.MeshStandardMaterial({ color: 0x2d7a2d, roughness: 0.85 });
+
+  const treePositions = [
+    { x: 8, z: -12 }, { x: 8, z: -24 }, { x: 8, z: -38 },
+    { x: -8, z: -14 }, { x: -8, z: -26 }, { x: -8, z: -40 },
+    { x: 8, z: 12 }, { x: 8, z: 24 }, { x: 8, z: 38 },
+    { x: -8, z: 14 }, { x: -8, z: 26 },
+    { x: 12, z: 8 }, { x: 24, z: 8 }, { x: 38, z: 8 },
+    { x: -12, z: 8 }, { x: -24, z: 8 }, { x: -38, z: 8 },
+    { x: 12, z: -8 }, { x: 24, z: -8 },
+    { x: -12, z: -8 }, { x: -24, z: -8 }
+  ];
+  treePositions.forEach(p => {
+    const tg = new THREE.CylinderGeometry(0.15, 0.2, 1.5, 5);
+    tg.translate(p.x, 0.75, p.z);
+    trunkGeos.push(tg);
+    // Single merged canopy sphere instead of 3 layers
+    const cg = new THREE.SphereGeometry(1.5, 6, 5);
+    cg.scale(1, 1.2, 1);
+    cg.translate(p.x, 2.8, p.z);
+    canopyGeos.push(cg);
+  });
+  const trunkMesh = new THREE.Mesh(mergeGeometries(trunkGeos), trunkMat);
+  trunkMesh.castShadow = true;
+  scene.add(trunkMesh);
+  const canopyMesh = new THREE.Mesh(mergeGeometries(canopyGeos), canopyMat);
+  canopyMesh.castShadow = true;
+  canopyMesh.receiveShadow = true;
+  scene.add(canopyMesh);
+
+  // Merge ALL lamp posts into one mesh
+  const lampGeos = [];
+  const lampGlowGeos = [];
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 });
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffeeaa, emissiveIntensity: 0.15 });
+
+  const lampPositions = [
+    { x: 7, z: -18 }, { x: -7, z: -20 },
+    { x: 7, z: 18 }, { x: -7, z: 20 },
+    { x: 18, z: 7 }, { x: -18, z: 7 },
+    { x: 20, z: -7 }, { x: -20, z: -7 }
+  ];
+  lampPositions.forEach(p => {
+    const pg = new THREE.CylinderGeometry(0.06, 0.08, 4.5, 5);
+    pg.translate(p.x, 2.25, p.z);
+    lampGeos.push(pg);
+    const ag = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 4);
+    ag.rotateZ(Math.PI / 2);
+    ag.translate(p.x, 4.5, p.z);
+    lampGeos.push(ag);
+    const lg = new THREE.SphereGeometry(0.25, 6, 6);
+    lg.scale(1, 0.6, 1);
+    lg.translate(p.x + 0.5, 4.5, p.z);
+    lampGlowGeos.push(lg);
+  });
+  scene.add(new THREE.Mesh(mergeGeometries(lampGeos), poleMat));
+  scene.add(new THREE.Mesh(mergeGeometries(lampGlowGeos), lampMat));
+
+  // Merge fire hydrants
+  const hydrantGeos = [];
+  const hydrantMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.6, metalness: 0.3 });
+  [{ x: 7.5, z: -8 }, { x: -7.5, z: 9 }, { x: 9, z: 7.5 }, { x: -9, z: -7.5 }].forEach(p => {
+    const bg = new THREE.CylinderGeometry(0.12, 0.15, 0.55, 6);
+    bg.translate(p.x, 0.275, p.z);
+    hydrantGeos.push(bg);
+    const tg = new THREE.SphereGeometry(0.13, 6, 5);
+    tg.translate(p.x, 0.58, p.z);
+    hydrantGeos.push(tg);
+  });
+  scene.add(new THREE.Mesh(mergeGeometries(hydrantGeos), hydrantMat));
+}
+
+// ============================================================
+// VEHICLE SYSTEM
+// ============================================================
+// Vehicle types with dimensions and build instructions
+// width, height, length are world units; speedMult adjusts base carSpeed
+const VEHICLE_TYPES = [
+  // --- Cars ---
+  { name: 'sedan',      w: 1.8, h: 1.4, l: 3.2, speedMult: 1.0, weight: 5, cabinScale: 0.5, cabinH: 0.4, cabinZ: -0.05 },
+  { name: 'suv',        w: 2.0, h: 1.6, l: 3.6, speedMult: 0.95, weight: 4, cabinScale: 0.6, cabinH: 0.5, cabinZ: -0.02 },
+  { name: 'hatchback',  w: 1.7, h: 1.3, l: 2.8, speedMult: 1.05, weight: 5, cabinScale: 0.4, cabinH: 0.38, cabinZ: -0.15 },
+  // --- Big vehicles ---
+  { name: 'bus',        w: 2.4, h: 2.8, l: 8.0, speedMult: 0.7, weight: 2, cabinScale: 0.85, cabinH: 0.7, cabinZ: 0 },
+  { name: 'semi',       w: 2.4, h: 2.6, l: 9.5, speedMult: 0.6, weight: 1, cabinScale: 0.25, cabinH: 0.6, cabinZ: 0.35 },
+  // --- Small ---
+  { name: 'motorcycle', w: 0.6, h: 1.2, l: 2.0, speedMult: 1.3, weight: 3, cabinScale: 0, cabinH: 0, cabinZ: 0 },
+];
+
+// Bus colors
+const BUS_COLORS = [0xddaa22, 0x2266aa, 0xcc3333, 0x22aa44, 0xee8833];
+
+// Weighted random selection
+function pickVehicleType() {
+  const totalWeight = VEHICLE_TYPES.reduce((s, v) => s + v.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const vt of VEHICLE_TYPES) {
+    r -= vt.weight;
+    if (r <= 0) return vt;
+  }
+  return VEHICLE_TYPES[0];
+}
+
+// Shared materials (cached once)
+const _sharedCarMat = {};
+function getSharedCarMat() {
+  if (_sharedCarMat.ready) return _sharedCarMat;
+  _sharedCarMat.dark = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.3 });
+  _sharedCarMat.tire = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+  _sharedCarMat.glass = new THREE.MeshStandardMaterial({ color: 0x88ccee, transparent: true, opacity: 0.55, roughness: 0.1, metalness: 0.2 });
+  _sharedCarMat.shadow = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 });
+  _sharedCarMat.chrome = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
+  _sharedCarMat.busWindow = new THREE.MeshStandardMaterial({ color: 0x99ccee, transparent: true, opacity: 0.45, roughness: 0.1, metalness: 0.2 });
+  _sharedCarMat.ready = true;
+  return _sharedCarMat;
+}
+
+function createVehicle(directionKey) {
+  const dir = DIRECTIONS[directionKey];
+  const vt = pickVehicleType();
+  const sharedMat = getSharedCarMat();
+  const group = new THREE.Group();
+
+  const W = vt.w, H = vt.h, L = vt.l;
+
+  if (vt.name === 'motorcycle') {
+    // --- MOTORCYCLE ---
+    const color = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+    const paintMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.7 });
+
+    const bodyGeos = [];
+    // Main frame
+    const frameGeo = new THREE.BoxGeometry(0.3, 0.4, 1.6);
+    frameGeo.translate(0, 0.5, 0);
+    bodyGeos.push(frameGeo);
+    // Fuel tank
+    const tankGeo = new THREE.BoxGeometry(0.35, 0.25, 0.6);
+    tankGeo.translate(0, 0.8, 0.15);
+    bodyGeos.push(tankGeo);
+    // Seat
+    const seatGeo = new THREE.BoxGeometry(0.3, 0.1, 0.6);
+    seatGeo.translate(0, 0.75, -0.3);
+    bodyGeos.push(seatGeo);
+    group.add(new THREE.Mesh(mergeGeometries(bodyGeos), paintMat));
+
+    // Rider (simple)
+    const riderGeos = [];
+    const torsoGeo = new THREE.BoxGeometry(0.35, 0.5, 0.3);
+    torsoGeo.translate(0, 1.2, -0.15);
+    riderGeos.push(torsoGeo);
+    const helmetGeo = new THREE.SphereGeometry(0.18, 6, 5);
+    helmetGeo.translate(0, 1.6, -0.1);
+    riderGeos.push(helmetGeo);
+    group.add(new THREE.Mesh(mergeGeometries(riderGeos), sharedMat.dark));
+
+    // Wheels
+    const darkGeos = [];
+    const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const fw = wheelGeo.clone(); fw.translate(0, 0.28, 0.65); darkGeos.push(fw);
+    const rw = wheelGeo.clone(); rw.translate(0, 0.28, -0.65); darkGeos.push(rw);
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+
+    // Headlight
+    const hlGeo = new THREE.CircleGeometry(0.08, 6);
+    hlGeo.translate(0, 0.7, 0.81);
+    group.add(new THREE.Mesh(hlGeo, new THREE.MeshStandardMaterial({ color: 0xffffdd, emissive: 0xffffdd, emissiveIntensity: 0.6 })));
+
+  } else if (vt.name === 'bus') {
+    // --- BUS ---
+    const color = BUS_COLORS[Math.floor(Math.random() * BUS_COLORS.length)];
+    const paintMat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.3 });
+
+    // Main body
+    const bodyGeo = new THREE.BoxGeometry(W, H * 0.85, L);
+    bodyGeo.translate(0, H * 0.45, 0);
+    const bodyMesh = new THREE.Mesh(bodyGeo, paintMat);
+    bodyMesh.castShadow = true;
+    group.add(bodyMesh);
+
+    // Windows as a texture strip along sides
+    const winTex = makeCanvasTexture(256, 64, (ctx, cw, ch) => {
+      ctx.clearRect(0, 0, cw, ch);
+      const winCount = Math.floor(L / 1.2);
+      const winW = cw / (winCount + 1);
+      for (let i = 1; i <= winCount; i++) {
+        ctx.fillStyle = '#99ccee';
+        ctx.fillRect(i * winW - winW * 0.35, ch * 0.15, winW * 0.7, ch * 0.6);
+      }
+    });
+    const winStripMat = new THREE.MeshStandardMaterial({ map: winTex, transparent: true, opacity: 0.7 });
+    const winStripGeo = new THREE.PlaneGeometry(L, H * 0.45);
+    const ws1 = new THREE.Mesh(winStripGeo, winStripMat);
+    ws1.position.set(W / 2 + 0.01, H * 0.55, 0);
+    ws1.rotation.y = Math.PI / 2;
+    group.add(ws1);
+    const ws2 = new THREE.Mesh(winStripGeo, winStripMat);
+    ws2.position.set(-W / 2 - 0.01, H * 0.55, 0);
+    ws2.rotation.y = -Math.PI / 2;
+    group.add(ws2);
+
+    // Front windshield
+    const windshieldGeo = new THREE.PlaneGeometry(W * 0.8, H * 0.4);
+    const windshield = new THREE.Mesh(windshieldGeo, sharedMat.glass);
+    windshield.position.set(0, H * 0.6, L / 2 + 0.01);
+    group.add(windshield);
+
+    // Dark parts (bumpers + wheels)
+    const darkGeos = [];
+    const bumperGeo = new THREE.BoxGeometry(W + 0.05, H * 0.12, 0.2);
+    const fb = bumperGeo.clone(); fb.translate(0, 0.2, L / 2 + 0.08); darkGeos.push(fb);
+    const rb = bumperGeo.clone(); rb.translate(0, 0.2, -L / 2 - 0.08); darkGeos.push(rb);
+    const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.22, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const wheelPositions = [
+      { x: -W / 2, z: L * 0.35 }, { x: W / 2, z: L * 0.35 },
+      { x: -W / 2, z: -L * 0.35 }, { x: W / 2, z: -L * 0.35 },
+      { x: -W / 2, z: -L * 0.15 }, { x: W / 2, z: -L * 0.15 },
+    ];
+    wheelPositions.forEach(wp => {
+      const wg = wheelGeo.clone(); wg.translate(wp.x, 0.38, wp.z); darkGeos.push(wg);
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+
+    // "ROUTE XX" sign on front top
+    const signGeo = new THREE.PlaneGeometry(W * 0.5, 0.4);
+    const signMat = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xffaa00, emissiveIntensity: 0.4 });
+    const sign = new THREE.Mesh(signGeo, signMat);
+    sign.position.set(0, H * 0.85, L / 2 + 0.02);
+    group.add(sign);
+
+  } else if (vt.name === 'semi') {
+    // --- SEMI TRUCK ---
+    const color = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+    const paintMat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.4 });
+
+    // Cab (front)
+    const cabW = W * 0.95, cabH = H * 0.85, cabL = L * 0.25;
+    const cabGeo = new THREE.BoxGeometry(cabW, cabH, cabL);
+    cabGeo.translate(0, cabH / 2 + 0.2, L / 2 - cabL / 2);
+    const cab = new THREE.Mesh(cabGeo, paintMat);
+    cab.castShadow = true;
+    group.add(cab);
+
+    // Cab windshield
+    const wGeo = new THREE.PlaneGeometry(cabW * 0.8, cabH * 0.45);
+    const wind = new THREE.Mesh(wGeo, sharedMat.glass);
+    wind.position.set(0, cabH * 0.7 + 0.2, L / 2 + 0.01);
+    group.add(wind);
+
+    // Trailer
+    const trailerL = L * 0.7;
+    const trailerGeo = new THREE.BoxGeometry(W, H * 0.9, trailerL);
+    trailerGeo.translate(0, H * 0.45 + 0.1, -trailerL / 2 + L * 0.15);
+    const trailerMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.6, metalness: 0.2 });
+    const trailer = new THREE.Mesh(trailerGeo, trailerMat);
+    trailer.castShadow = true;
+    group.add(trailer);
+
+    // Dark parts (wheels, bumpers)
+    const darkGeos = [];
+    const bumperGeo = new THREE.BoxGeometry(W + 0.1, H * 0.15, 0.25);
+    const fb2 = bumperGeo.clone(); fb2.translate(0, 0.25, L / 2 + 0.1); darkGeos.push(fb2);
+    const rb2 = bumperGeo.clone(); rb2.translate(0, 0.25, -L / 2 + L * 0.15 - trailerL / 2 - 0.1); darkGeos.push(rb2);
+    const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.24, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    // Cab wheels
+    [{ x: -W / 2, z: L * 0.4 }, { x: W / 2, z: L * 0.4 }].forEach(wp => {
+      darkGeos.push(wheelGeo.clone().translate(wp.x, 0.4, wp.z));
+    });
+    // Trailer wheels (dual axle)
+    const trailerEnd = -trailerL / 2 + L * 0.15;
+    [0, 1.2].forEach(offset => {
+      [{ x: -W / 2 }, { x: W / 2 }].forEach(wp => {
+        darkGeos.push(wheelGeo.clone().translate(wp.x, 0.4, trailerEnd - 0.5 - offset));
+      });
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+
+    // Exhaust pipes
+    const pipeGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.2, 5);
+    pipeGeo.translate(cabW / 2 + 0.08, cabH + 0.2, L / 2 - cabL / 2);
+    const pipeGeo2 = pipeGeo.clone();
+    pipeGeo2.translate(-cabW - 0.16, 0, 0);
+    group.add(new THREE.Mesh(mergeGeometries([pipeGeo, pipeGeo2]), sharedMat.chrome));
+
+  } else {
+    // --- STANDARD CAR (sedan / suv / hatchback) ---
+    const color = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+    const paintMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.6 });
+
+    const paintGeos = [];
+    const bodyGeo = new THREE.BoxGeometry(W, H * 0.55, L);
+    bodyGeo.translate(0, H * 0.3 + 0.3, 0);
+    paintGeos.push(bodyGeo);
+    const bodyMesh = new THREE.Mesh(mergeGeometries(paintGeos), paintMat);
+    bodyMesh.castShadow = true;
+    group.add(bodyMesh);
+
+    // Cabin
+    const cabinH = H * vt.cabinH;
+    const cabinL = L * vt.cabinScale;
+    const cabinW = W * 0.78;
+    const cabinGeo = new THREE.BoxGeometry(cabinW, cabinH, cabinL);
+    const cabinPos = cabinGeo.getAttribute('position');
+    for (let i = 0; i < cabinPos.count; i++) {
+      if (cabinPos.getY(i) > 0) {
+        cabinPos.setX(i, cabinPos.getX(i) * 0.85);
+        cabinPos.setZ(i, cabinPos.getZ(i) * 0.9);
+      }
+    }
+    cabinGeo.computeVertexNormals();
+    const cabin = new THREE.Mesh(cabinGeo, sharedMat.glass);
+    cabin.position.y = H * 0.55 + cabinH / 2 + 0.3;
+    cabin.position.z = L * vt.cabinZ;
+    group.add(cabin);
+
+    // Dark parts (bumpers + wheels)
+    const darkGeos = [];
+    const bumperGeo = new THREE.BoxGeometry(W + 0.05, H * 0.2, 0.15);
+    darkGeos.push(bumperGeo.clone().translate(0, 0.35, L / 2 + 0.05));
+    darkGeos.push(bumperGeo.clone().translate(0, 0.35, -L / 2 - 0.05));
+    const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.18, 8);
+    wheelGeo.rotateZ(Math.PI / 2);
+    [{ x: -W / 2, z: L * 0.3 }, { x: W / 2, z: L * 0.3 },
+     { x: -W / 2, z: -L * 0.3 }, { x: W / 2, z: -L * 0.3 }].forEach(wp => {
+      darkGeos.push(wheelGeo.clone().translate(wp.x, 0.28, wp.z));
+    });
+    group.add(new THREE.Mesh(mergeGeometries(darkGeos), sharedMat.dark));
+  }
+
+  // Shadow disc sized to vehicle
+  const shadowGeo = new THREE.PlaneGeometry(W + 0.3, L + 0.3);
+  shadowGeo.rotateX(-Math.PI / 2);
+  const shadowDisc = new THREE.Mesh(shadowGeo, sharedMat.shadow);
+  shadowDisc.position.y = 0.02;
+  group.add(shadowDisc);
+
+  // Position at spawn point
+  if (dir.axis === 'z') {
+    group.position.x = dir.laneOffset;
+    group.position.z = dir.sign * SPAWN_DIST;
+  } else {
+    group.position.z = dir.laneOffset;
+    group.position.x = dir.sign * SPAWN_DIST;
+  }
+  group.position.y = 0;
+  group.rotation.y = dir.angle;
+  scene.add(group);
+
+  const isImpatient = Math.random() < impatienceChance;
+
+  return {
+    mesh: group,
+    direction: directionKey,
+    dirData: dir,
+    speed: carSpeed * vt.speedMult * (0.9 + Math.random() * 0.2),
+    state: 'moving',
+    isImpatient,
+    impatienceTimer: 0,
+    creepSpeed: carSpeed * 0.15,
+    distanceFromCenter: SPAWN_DIST,
+    cleared: false,
+    vehicleLength: L,
+    vehicleWidth: W,
+    vehicleType: vt.name,
+    isPedestrian: false
+  };
+}
+
+// ============================================================
+// PEDESTRIAN SYSTEM
+// ============================================================
+const SHIRT_COLORS = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf39c12, 0x9b59b6, 0xe67e22, 0xecf0f1, 0x1abc9c];
+const PANTS_COLORS = [0x2c3e50, 0x34495e, 0x1a1a2e, 0x3d4f5f, 0x4a3728];
+const HAIR_COLORS = [0x2a1a0a, 0x6b4226, 0xd4a460, 0x1a1a1a, 0x8b4513, 0xcc6633];
+
+function createPedestrian() {
+  // Pedestrians cross at crosswalks (perpendicular to a random road)
+  // Pick a crosswalk: NS crosswalks cross E-W, EW crosswalks cross N-S
+  const crossings = [
+    { crossAxis: 'x', fixedAxis: 'z', fixedPos: STOP_LINE_DIST + 1.2, sign: Math.random() > 0.5 ? 1 : -1 },
+    { crossAxis: 'x', fixedAxis: 'z', fixedPos: -(STOP_LINE_DIST + 1.2), sign: Math.random() > 0.5 ? 1 : -1 },
+    { crossAxis: 'z', fixedAxis: 'x', fixedPos: STOP_LINE_DIST + 1.2, sign: Math.random() > 0.5 ? 1 : -1 },
+    { crossAxis: 'z', fixedAxis: 'x', fixedPos: -(STOP_LINE_DIST + 1.2), sign: Math.random() > 0.5 ? 1 : -1 },
+  ];
+  const crossing = crossings[Math.floor(Math.random() * crossings.length)];
+
+  const group = new THREE.Group();
+  const skinColor = [0xe8b88a, 0xc68642, 0x8d5524, 0xf1c27d][Math.floor(Math.random() * 4)];
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+  const shirtMat = new THREE.MeshStandardMaterial({ color: SHIRT_COLORS[Math.floor(Math.random() * SHIRT_COLORS.length)], roughness: 0.7 });
+  const pantsMat = new THREE.MeshStandardMaterial({ color: PANTS_COLORS[Math.floor(Math.random() * PANTS_COLORS.length)], roughness: 0.7 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)], roughness: 0.8 });
+
+  // Build pedestrian (merged per material)
+  const shirtGeos = [];
+  const pantsGeos = [];
+  const skinGeos = [];
+
+  // Torso
+  const torsoGeo = new THREE.BoxGeometry(0.3, 0.4, 0.2);
+  torsoGeo.translate(0, 1.0, 0);
+  shirtGeos.push(torsoGeo);
+  // Arms
+  const armGeo = new THREE.BoxGeometry(0.1, 0.35, 0.1);
+  const aL = armGeo.clone(); aL.translate(-0.22, 0.95, 0); shirtGeos.push(aL);
+  const aR = armGeo.clone(); aR.translate(0.22, 0.95, 0); shirtGeos.push(aR);
+
+  // Legs
+  const legGeo = new THREE.BoxGeometry(0.12, 0.45, 0.12);
+  const lL = legGeo.clone(); lL.translate(-0.09, 0.45, 0); pantsGeos.push(lL);
+  const lR = legGeo.clone(); lR.translate(0.09, 0.45, 0); pantsGeos.push(lR);
+
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.14, 6, 5);
+  headGeo.translate(0, 1.38, 0);
+  skinGeos.push(headGeo);
+  // Hands
+  const handGeo = new THREE.SphereGeometry(0.05, 4, 4);
+  const hL = handGeo.clone(); hL.translate(-0.22, 0.75, 0); skinGeos.push(hL);
+  const hR = handGeo.clone(); hR.translate(0.22, 0.75, 0); skinGeos.push(hR);
+
+  // Hair
+  const hairGeo = new THREE.SphereGeometry(0.15, 6, 5);
+  hairGeo.scale(1, 0.6, 1);
+  hairGeo.translate(0, 1.46, -0.02);
+
+  group.add(new THREE.Mesh(mergeGeometries(shirtGeos), shirtMat));
+  group.add(new THREE.Mesh(mergeGeometries(pantsGeos), pantsMat));
+  group.add(new THREE.Mesh(mergeGeometries(skinGeos), skinMat));
+  group.add(new THREE.Mesh(hairGeo, hairMat));
+
+  // Position at edge of crosswalk
+  const startPos = ROAD_WIDTH / 2 + 1.5;
+  if (crossing.crossAxis === 'x') {
+    group.position.x = crossing.sign * startPos;
+    group.position.z = crossing.fixedPos;
+    group.rotation.y = crossing.sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+  } else {
+    group.position.z = crossing.sign * startPos;
+    group.position.x = crossing.fixedPos;
+    group.rotation.y = crossing.sign > 0 ? Math.PI : 0;
+  }
+  group.position.y = 0;
+  scene.add(group);
+
+  const pedSpeed = 2.0 + Math.random() * 1.5;
+
+  return {
+    mesh: group,
+    direction: crossing.crossAxis === 'x' ? (crossing.sign > 0 ? 'WEST' : 'EAST') : (crossing.sign > 0 ? 'NORTH' : 'SOUTH'),
+    dirData: crossing.crossAxis === 'x'
+      ? { axis: 'x', sign: crossing.sign, perpAxis: 'z', laneOffset: crossing.fixedPos, angle: crossing.sign > 0 ? -Math.PI / 2 : Math.PI / 2 }
+      : { axis: 'z', sign: crossing.sign, perpAxis: 'x', laneOffset: crossing.fixedPos, angle: crossing.sign > 0 ? Math.PI : 0 },
+    speed: pedSpeed,
+    state: 'moving',
+    isImpatient: false,
+    impatienceTimer: 0,
+    creepSpeed: 0,
+    distanceFromCenter: startPos,
+    cleared: false,
+    vehicleLength: 0.4,
+    vehicleWidth: 0.3,
+    vehicleType: 'pedestrian',
+    isPedestrian: true,
+    crossAxis: crossing.crossAxis,
+    crossSign: crossing.sign,
+    crossFixed: crossing.fixedPos,
+    pedBob: Math.random() * Math.PI * 2  // walking animation phase
+  };
+}
+
+function spawnCars() {
+  const availableDirs = Object.keys(DIRECTIONS);
+  const count = Math.min(maxCarsPerSpawn, 1 + Math.floor(Math.random() * maxCarsPerSpawn));
+
+  const shuffled = availableDirs.sort(() => Math.random() - 0.5);
+  for (let i = 0; i < count; i++) {
+    const dirKey = shuffled[i % shuffled.length];
+
+    // Don't spawn if there's already a car very close to the spawn point in this direction
+    const tooClose = cars.some(c =>
+      c.direction === dirKey && !c.isPedestrian &&
+      c.distanceFromCenter > SPAWN_DIST - (c.vehicleLength || CAR_LENGTH) * 2
+    );
+    if (tooClose) continue;
+
+    const car = createVehicle(dirKey);
+    cars.push(car);
+  }
+
+  // Occasionally spawn a pedestrian (roughly every 3rd spawn cycle)
+  if (Math.random() < 0.35 && gameRunning) {
+    const ped = createPedestrian();
+    if (ped) cars.push(ped);
+  }
+}
+
+function updateCars(dt) {
+  const toRemove = [];
+
+  for (const car of cars) {
+    if (car.state === 'crashed') continue;
+
+    // --- PEDESTRIAN UPDATE ---
+    if (car.isPedestrian) {
+      const ped = car;
+      // Pedestrians walk across the crosswalk regardless of signals (they have right of way when ALL_STOP)
+      // But they wait at the edge if traffic is flowing on their crossing road
+      const crossAxis = ped.crossAxis; // 'x' or 'z'
+      const crossingNS = crossAxis === 'z'; // pedestrian crosses along z = they cross a NS road
+      const trafficFlowingOnCrossRoad = crossingNS
+        ? (signalState === SIGNAL_STATES.NS_GO || signalState === SIGNAL_STATES.ALL_GO)
+        : (signalState === SIGNAL_STATES.EW_GO || signalState === SIGNAL_STATES.ALL_GO);
+
+      const pedPos = crossAxis === 'x' ? ped.mesh.position.x : ped.mesh.position.z;
+      const pedDist = Math.abs(pedPos);
+      ped.distanceFromCenter = pedDist;
+
+      if (ped.state === 'moving' || ped.state === 'through') {
+        const moveAmount = ped.speed * dt;
+        if (crossAxis === 'x') {
+          ped.mesh.position.x -= ped.crossSign * moveAmount;
+        } else {
+          ped.mesh.position.z -= ped.crossSign * moveAmount;
+        }
+        // Walking bob animation
+        ped.pedBob += dt * 8;
+        ped.mesh.position.y = Math.abs(Math.sin(ped.pedBob)) * 0.06;
+
+        if (pedDist < ROAD_WIDTH / 2) ped.state = 'through';
+
+        // Remove when across
+        const newPos = crossAxis === 'x' ? ped.mesh.position.x : ped.mesh.position.z;
+        if (Math.abs(newPos) > ROAD_WIDTH / 2 + 2 && Math.sign(newPos) !== Math.sign(ped.crossSign)) {
+          if (!ped.cleared) {
+            ped.cleared = true;
+            score += 5;
+            carsCleared++;
+          }
+          toRemove.push(ped);
+        }
+      } else if (ped.state === 'waiting') {
+        if (!trafficFlowingOnCrossRoad || signalState === SIGNAL_STATES.ALL_STOP) {
+          ped.state = 'moving';
+        }
+      }
+      // Wait at edge before entering road
+      if (ped.state === 'moving' && pedDist > ROAD_WIDTH / 2 && trafficFlowingOnCrossRoad && signalState !== SIGNAL_STATES.ALL_STOP) {
+        ped.state = 'waiting';
+      }
+      continue;
+    }
+
+    // --- VEHICLE UPDATE ---
+    const dir = car.dirData;
+    const isNS = dir.axis === 'z';
+    const posComponent = isNS ? car.mesh.position.z : car.mesh.position.x;
+    const distFromCenter = Math.abs(posComponent);
+    car.distanceFromCenter = distFromCenter;
+
+    const shouldStop = isCarSignaledToStop(car);
+    const inIntersection = distFromCenter < INTERSECTION_SIZE / 2 + (car.vehicleLength || CAR_LENGTH) / 2;
+
+    // Check if another car of same direction is ahead and close
+    const vLen = car.vehicleLength || CAR_LENGTH;
+    const carAhead = cars.some(other => {
+      if (other === car || other.direction !== car.direction || other.state === 'crashed') return false;
+      if (other.isPedestrian) return false;
+      const otherPos = isNS ? other.mesh.position.z : other.mesh.position.x;
+      const myPos = posComponent;
+      const diff = (otherPos - myPos) * (-dir.sign);
+      const gap = (vLen + (other.vehicleLength || CAR_LENGTH)) * 0.5 + 0.5;
+      return diff > 0 && diff < gap;
+    });
+
+    if (car.state === 'moving' || car.state === 'through') {
+      if (shouldStop && distFromCenter > STOP_LINE_DIST - 1 && !inIntersection && !car.state.includes('through')) {
+        // Should stop at stop line
+        if (distFromCenter <= STOP_LINE_DIST + 0.5) {
+          car.state = 'waiting';
+        }
+      }
+
+      if (carAhead) {
+        // Don't move if car ahead is too close
+      } else {
+        // Move forward
+        const moveAmount = car.speed * dt;
+        if (isNS) {
+          car.mesh.position.z -= dir.sign * moveAmount;
+        } else {
+          car.mesh.position.x -= dir.sign * moveAmount;
+        }
+      }
+
+      // Mark as through once in intersection
+      if (inIntersection) {
+        car.state = 'through';
+      }
+
+      // Check if exited
+      const newPos = isNS ? car.mesh.position.z : car.mesh.position.x;
+      if (Math.abs(newPos) > EXIT_DIST) {
+        if (!car.cleared) {
+          car.cleared = true;
+          score += 10;
+          carsCleared++;
+          playScore();
+        }
+        toRemove.push(car);
+      }
+    } else if (car.state === 'waiting') {
+      if (!shouldStop) {
+        // Signal changed, start moving
+        car.state = 'moving';
+      }
+      // Impatient driver creeps
+      if (car.isImpatient && shouldStop) {
+        car.impatienceTimer += dt;
+        if (car.impatienceTimer > 2) {
+          const creep = car.creepSpeed * dt;
+          if (isNS) {
+            car.mesh.position.z -= dir.sign * creep;
+          } else {
+            car.mesh.position.x -= dir.sign * creep;
+          }
+          // If impatient car creeps into intersection, switch to moving
+          const newDist = Math.abs(isNS ? car.mesh.position.z : car.mesh.position.x);
+          if (newDist < STOP_LINE_DIST - 2) {
+            car.state = 'through';
+          }
+        }
+      }
+    }
+  }
+
+  // Remove exited cars
+  for (const car of toRemove) {
+    scene.remove(car.mesh);
+    // Dispose geometry/materials
+    car.mesh.traverse(child => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    });
+    const idx = cars.indexOf(car);
+    if (idx >= 0) cars.splice(idx, 1);
+  }
+}
+
+function isCarSignaledToStop(car) {
+  const isNS = car.dirData.axis === 'z';
+  if (signalState === SIGNAL_STATES.ALL_GO) return false;
+  if (signalState === SIGNAL_STATES.ALL_STOP) return true;
+  if (signalState === SIGNAL_STATES.NS_GO && isNS) return false;
+  if (signalState === SIGNAL_STATES.EW_GO && !isNS) return false;
+  return true;
+}
+
+// ============================================================
+// COLLISION DETECTION
+// ============================================================
+function checkCollisions() {
+  for (let i = 0; i < cars.length; i++) {
+    for (let j = i + 1; j < cars.length; j++) {
+      const a = cars[i];
+      const b = cars[j];
+      if (a.state === 'crashed' || b.state === 'crashed') continue;
+      if (a.direction === b.direction) continue; // same lane, no collision
+
+      const dist = a.mesh.position.distanceTo(b.mesh.position);
+      // Skip pedestrian-pedestrian collisions
+      if (a.isPedestrian && b.isPedestrian) continue;
+      const minDist = ((a.vehicleLength || CAR_LENGTH) + (b.vehicleLength || CAR_LENGTH)) * 0.35;
+      if (dist < minDist) {
+        // CRASH!
+        a.state = 'crashed';
+        b.state = 'crashed';
+        playCrash();
+        triggerGameOver('crash');
+        return;
+      }
+    }
+  }
+}
+
+function checkBackup() {
+  const counts = { NORTH: 0, SOUTH: 0, EAST: 0, WEST: 0 };
+  for (let i = 0; i < cars.length; i++) {
+    const c = cars[i];
+    if (c.isPedestrian || c.state === 'crashed' || c.state === 'through') continue;
+    const threshold = SPAWN_DIST - (c.vehicleLength || CAR_LENGTH) * 3;
+    if (c.distanceFromCenter >= threshold) counts[c.direction]++;
+  }
+  if (counts.NORTH >= 2 || counts.SOUTH >= 2 || counts.EAST >= 2 || counts.WEST >= 2) {
+    triggerGameOver('backup');
+  }
+}
+
+// ============================================================
+// DIFFICULTY
+// ============================================================
+function updateDifficulty(dt) {
+  difficultyTimer += dt;
+
+  // Increase difficulty every ~8 seconds
+  const newWave = Math.floor(difficultyTimer / 8) + 1;
+  if (newWave !== wave) {
+    wave = newWave;
+    spawnInterval = Math.max(0.4, 2.0 - (wave - 1) * 0.2);
+    carSpeed = Math.min(22, 9 + (wave - 1) * 1.5);
+    maxCarsPerSpawn = Math.min(4, 1 + Math.floor(wave / 2));
+    impatienceChance = Math.min(0.5, (wave - 1) * 0.08);
+  }
+}
+
+// ============================================================
+// COP ANIMATION
+// ============================================================
+function updateCopAnimation(dt) {
+  // Cop body rotation follows facing direction (smooth)
+  const targetBodyY = FACING_ANGLES[copFacingIndex];
+  copModel.rotation.y = lerpAngle(copModel.rotation.y, targetBodyY, 0.1);
+
+  // Arms based on signal
+  if (signalState === SIGNAL_STATES.ALL_STOP) {
+    // All stop — arms up (blocking)
+    copLeftArm.rotation.z = THREE.MathUtils.lerp(copLeftArm.rotation.z, Math.PI / 4, 0.15);
+    copRightArm.rotation.z = THREE.MathUtils.lerp(copRightArm.rotation.z, -Math.PI / 4, 0.15);
+    copLeftArm.rotation.x = THREE.MathUtils.lerp(copLeftArm.rotation.x, -Math.PI / 3, 0.15);
+    copRightArm.rotation.x = THREE.MathUtils.lerp(copRightArm.rotation.x, -Math.PI / 3, 0.15);
+  } else if (signalState === SIGNAL_STATES.EW_GO || signalState === SIGNAL_STATES.NS_GO) {
+    // Directing traffic — arms out to sides
+    copLeftArm.rotation.z = THREE.MathUtils.lerp(copLeftArm.rotation.z, Math.PI / 2, 0.1);
+    copRightArm.rotation.z = THREE.MathUtils.lerp(copRightArm.rotation.z, -Math.PI / 2, 0.1);
+    copLeftArm.rotation.x = THREE.MathUtils.lerp(copLeftArm.rotation.x, -Math.PI / 2, 0.1);
+    copRightArm.rotation.x = THREE.MathUtils.lerp(copRightArm.rotation.x, -Math.PI / 2, 0.1);
+  } else {
+    // ALL_GO — arms down, relaxed
+    copLeftArm.rotation.z = THREE.MathUtils.lerp(copLeftArm.rotation.z, 0.1, 0.1);
+    copRightArm.rotation.z = THREE.MathUtils.lerp(copRightArm.rotation.z, -0.1, 0.1);
+    copLeftArm.rotation.x = THREE.MathUtils.lerp(copLeftArm.rotation.x, 0, 0.1);
+    copRightArm.rotation.x = THREE.MathUtils.lerp(copRightArm.rotation.x, 0, 0.1);
+  }
+}
+
+function updateCamera(dt) {
+  // Smoothly orbit camera to match cop facing
+  currentCameraAngle = lerpAngle(currentCameraAngle, targetCameraAngle, 0.06);
+  const camDist = 35;
+  const camHeight = 40;
+  camera.position.x = Math.sin(currentCameraAngle) * camDist;
+  camera.position.z = Math.cos(currentCameraAngle) * camDist;
+  camera.position.y = camHeight;
+  camera.lookAt(0, 0, 0);
+
+  // Update turn cooldown
+  if (turnCooldown > 0) turnCooldown -= dt;
+}
+
+function lerpAngle(a, b, t) {
+  // Shortest path angle lerp
+  let diff = b - a;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return a + diff * t;
+}
+
+// ============================================================
+// SIGNAL MARKERS (visual feedback at stop lines)
+// ============================================================
+function updateSignalMarkers(time) {
+  const pulse = 0.8 + Math.sin(time * 0.005) * 0.2;
+  for (const dirKey in signalMarkers) {
+    const marker = signalMarkers[dirKey];
+    const isStopped = isCarSignaledToStop({ dirData: DIRECTIONS[dirKey] });
+    if (isStopped) {
+      marker.material.color.setHex(0xff2222);
+      marker.material.emissive.setHex(0xff2222);
+      marker.material.emissiveIntensity = pulse;
+    } else {
+      marker.material.color.setHex(0x22ff44);
+      marker.material.emissive.setHex(0x22ff44);
+      marker.material.emissiveIntensity = 0.6;
+    }
+  }
+}
+
+// ============================================================
+// GESTURE DETECTION (MediaPipe Hands)
+// ============================================================
+async function initGestureDetection() {
+  try {
+    const video = document.getElementById('webcam');
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 320, height: 240, facingMode: 'user' }
+    });
+    video.srcObject = stream;
+    await video.play();
+    webcamContainer.classList.remove('hidden');
+
+    // Use MediaPipe Hands loaded via script tag
+    const hands = new window.Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
+    });
+
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.5
+    });
+
+    hands.onResults(onGestureResults);
+    handsRef = hands;
+    gestureActive = true;
+
+    // Process frames continuously (even on menus for gesture-driven UI)
+    async function processFrame() {
+      if (video.readyState >= 2) {
+        await hands.send({ image: video });
+      }
+      requestAnimationFrame(processFrame);
+    }
+    processFrame();
+
+  } catch (err) {
+    console.warn('Webcam/MediaPipe not available, using keyboard controls:', err);
+    gestureActive = false;
+    keyboardHint.classList.remove('hidden');
+    gestureLabel.textContent = 'No webcam';
+  }
+}
+
+function isFist(landmarks) {
+  // Check if most fingers are curled (tip below pip in Y = curled)
+  // Require at least 3 of 4 fingers curled (thumb excluded — unreliable)
+  const curledCount =
+    (landmarks[8].y > landmarks[6].y ? 1 : 0) +   // index
+    (landmarks[12].y > landmarks[10].y ? 1 : 0) +  // middle
+    (landmarks[16].y > landmarks[14].y ? 1 : 0) +  // ring
+    (landmarks[20].y > landmarks[18].y ? 1 : 0);   // pinky
+  return curledCount >= 3;
+}
+
+function onGestureResults(results) {
+  const numHands = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
+
+  if (numHands === 0) {
+    currentGesture = 'NONE';
+    lastFistGesture = 'NONE';
+    gestureLabel.textContent = 'No hands — ALL GO';
+    if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.ALL_GO;
+    updateGestureUI();
+    return;
+  }
+
+  // Determine which hands are visible and if they're fists
+  // MediaPipe mirrors: 'Left' in results = your RIGHT hand, 'Right' = your LEFT hand
+  let realLeftIdx = -1, realRightIdx = -1;
+  for (let i = 0; i < results.multiHandedness.length; i++) {
+    if (results.multiHandedness[i].label === 'Right') realLeftIdx = i;  // mirrored
+    if (results.multiHandedness[i].label === 'Left') realRightIdx = i;  // mirrored
+  }
+
+  const hasRealLeft = realLeftIdx >= 0;
+  const hasRealRight = realRightIdx >= 0;
+  const leftIsFist = hasRealLeft && isFist(results.multiHandLandmarks[realLeftIdx]);
+  const rightIsFist = hasRealRight && isFist(results.multiHandLandmarks[realRightIdx]);
+
+  // Check for fist turn gestures (only during gameplay or tutorial step 3)
+  let fistGesture = 'NONE';
+  if (hasRealLeft && !hasRealRight && leftIsFist) {
+    fistGesture = 'LEFT_FIST';
+  } else if (hasRealRight && !hasRealLeft && rightIsFist) {
+    fistGesture = 'RIGHT_FIST';
+  }
+
+  // Edge detection: trigger turn only on fist appearing (not while held)
+  if (appPhase === 'playing' && turnCooldown <= 0) {
+    if (fistGesture === 'LEFT_FIST' && lastFistGesture !== 'LEFT_FIST') {
+      rotateCop(-1); // turn left (counter-clockwise)
+    } else if (fistGesture === 'RIGHT_FIST' && lastFistGesture !== 'RIGHT_FIST') {
+      rotateCop(1); // turn right (clockwise)
+    }
+  }
+  lastFistGesture = fistGesture;
+
+  // Only set traffic signals for OPEN hands (not fists)
+  if (fistGesture !== 'NONE') {
+    // Show fist label but don't change traffic signal
+    if (fistGesture === 'LEFT_FIST') {
+      currentGesture = 'LEFT_FIST';
+      gestureLabel.textContent = '✊ Left Fist — TURN LEFT';
+    } else {
+      currentGesture = 'RIGHT_FIST';
+      gestureLabel.textContent = '✊ Right Fist — TURN RIGHT';
+    }
+  } else if (numHands >= 2 || (hasRealLeft && hasRealRight)) {
+    currentGesture = 'BOTH';
+    gestureLabel.textContent = '🙌 Both Hands — ALL STOP';
+    if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.ALL_STOP;
+  } else if (hasRealLeft && !leftIsFist) {
+    currentGesture = 'LEFT';
+    gestureLabel.textContent = '🤚 Left Hand — E/W GO';
+    if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.EW_GO;
+  } else if (hasRealRight && !rightIsFist) {
+    currentGesture = 'RIGHT';
+    gestureLabel.textContent = '✋ Right Hand — N/S GO';
+    if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.NS_GO;
+  } else {
+    currentGesture = 'NONE';
+    gestureLabel.textContent = 'No hands — ALL GO';
+    if (appPhase === 'playing') pendingSignal = SIGNAL_STATES.ALL_GO;
+  }
+
+  updateGestureUI();
+}
+
+function rotateCop(direction) {
+  // direction: 1 = clockwise, -1 = counter-clockwise
+  copFacingIndex = (copFacingIndex + direction + 4) % 4;
+  targetCameraAngle = copFacingIndex * (Math.PI / 2);
+  turnCooldown = 0.8; // prevent rapid turns
+  playWhistle();
+}
+
+// ============================================================
+// GESTURE-DRIVEN UI LOGIC
+// ============================================================
+let lastGestureUITime = 0;
+function updateGestureUI() {
+  const now = performance.now() / 1000;
+  const dt = lastGestureUITime ? Math.min(now - lastGestureUITime, 0.2) : 0.033;
+  lastGestureUITime = now;
+
+  if (appPhase === 'start') {
+    if (currentGesture === 'BOTH') {
+      gestureHoldTimer = Math.min(gestureHoldTimer + dt, HOLD_DURATION);
+    } else {
+      gestureHoldTimer = Math.max(0, gestureHoldTimer - dt * 0.5);
+    }
+    updateRing('startRingFg', gestureHoldTimer / HOLD_DURATION);
+    if (gestureHoldTimer >= HOLD_DURATION) {
+      gestureHoldTimer = 0;
+      startTutorial();
+    }
+  } else if (appPhase === 'tutorial') {
+    const expectedGestures = ['LEFT', 'RIGHT', 'BOTH', 'LEFT_FIST'];
+    const expected = expectedGestures[tutorialStep];
+    const tutDetect = document.getElementById('tutDetectLabel');
+    const gestureNames = { NONE: 'No hands', LEFT: '🤚 Left Hand', RIGHT: '✋ Right Hand', BOTH: '🙌 Both Hands', LEFT_FIST: '✊ Left Fist', RIGHT_FIST: '✊ Right Fist' };
+    tutDetect.textContent = 'Detected: ' + (gestureNames[currentGesture] || currentGesture);
+
+    const isMatch = (currentGesture === expected) ||
+      (tutorialStep === 3 && (currentGesture === 'LEFT_FIST' || currentGesture === 'RIGHT_FIST'));
+
+    if (isMatch) {
+      gestureHoldTimer = Math.min(gestureHoldTimer + dt, HOLD_DURATION);
+    } else {
+      gestureHoldTimer = Math.max(0, gestureHoldTimer - dt * 0.5);
+    }
+    updateRing('tutRingFg', gestureHoldTimer / HOLD_DURATION);
+    if (gestureHoldTimer >= HOLD_DURATION) {
+      completeTutorialStep();
+    }
+  } else if (appPhase === 'gameover') {
+    if (currentGesture === 'BOTH') {
+      gestureHoldTimer = Math.min(gestureHoldTimer + dt, HOLD_DURATION);
+    } else {
+      gestureHoldTimer = Math.max(0, gestureHoldTimer - dt * 0.5);
+    }
+    updateRing('restartRingFg', gestureHoldTimer / HOLD_DURATION);
+    if (gestureHoldTimer >= HOLD_DURATION) {
+      gestureHoldTimer = 0;
+      startGame();
+    }
+  }
+}
+
+function updateRing(id, progress) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const circumference = 2 * Math.PI * 36; // r=36
+  el.style.strokeDashoffset = circumference * (1 - Math.max(0, Math.min(1, progress)));
+}
+
+function startTutorial() {
+  appPhase = 'tutorial';
+  tutorialStep = 0;
+  gestureHoldTimer = 0;
+  startScreen.classList.add('hidden');
+  document.getElementById('tutorialScreen').classList.remove('hidden');
+  // Mirror webcam into tutorial large view
+  const tutVid = document.getElementById('webcamTutorial');
+  const mainVid = document.getElementById('webcam');
+  if (mainVid.srcObject) tutVid.srcObject = mainVid.srcObject;
+  updateTutorialUI();
+}
+
+function updateTutorialUI() {
+  const steps = [document.getElementById('tutStep1'), document.getElementById('tutStep2'), document.getElementById('tutStep3'), document.getElementById('tutStep4')];
+  const checks = [document.getElementById('tutCheck1'), document.getElementById('tutCheck2'), document.getElementById('tutCheck3'), document.getElementById('tutCheck4')];
+  steps.forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (i < tutorialStep) { s.classList.add('done'); checks[i].textContent = '✅'; }
+    else if (i === tutorialStep) { s.classList.add('active'); checks[i].textContent = '⬜'; }
+    else { checks[i].textContent = '⬜'; }
+  });
+  const ring = document.getElementById('tutHoldRing');
+  ring.style.display = tutorialStep < 4 ? 'block' : 'none';
+}
+
+function completeTutorialStep() {
+  gestureHoldTimer = 0;
+  tutorialStep++;
+  playWhistle();
+  if (tutorialStep >= 4) {
+    // Tutorial complete, start game after brief pause
+    setTimeout(() => {
+      document.getElementById('tutorialScreen').classList.add('hidden');
+      startGame();
+    }, 600);
+  }
+  updateTutorialUI();
+}
+
+// ============================================================
+// KEYBOARD CONTROLS (fallback)
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  // In-game controls
+  if (gameRunning) {
+    switch (e.key.toLowerCase()) {
+      case 'a': pendingSignal = SIGNAL_STATES.EW_GO; break;
+      case 'd': pendingSignal = SIGNAL_STATES.NS_GO; break;
+      case 's': pendingSignal = SIGNAL_STATES.ALL_STOP; break;
+      case 'w': pendingSignal = SIGNAL_STATES.ALL_GO; break;
+      case 'q': rotateCop(-1); break;
+      case 'e': rotateCop(1); break;
+    }
+  }
+  // Space for UI navigation
+  if (e.key === ' ') {
+    e.preventDefault();
+    if (appPhase === 'start') startTutorial();
+    else if (appPhase === 'tutorial') {
+      // Skip tutorial
+      document.getElementById('tutorialScreen').classList.add('hidden');
+      startGame();
+    }
+    else if (appPhase === 'gameover') startGame();
+  }
+});
+
+// ============================================================
+// GAME FLOW
+// ============================================================
+function startGame() {
+  // Reset state
+  cars.forEach(c => {
+    scene.remove(c.mesh);
+    c.mesh.traverse(child => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    });
+  });
+  cars = [];
+  score = 0;
+  carsCleared = 0;
+  wave = 1;
+  spawnInterval = 3.0;
+  carSpeed = 8;
+  maxCarsPerSpawn = 1;
+  impatienceChance = 0;
+  spawnTimer = 0;
+  difficultyTimer = 0;
+  signalState = SIGNAL_STATES.ALL_GO;
+  pendingSignal = SIGNAL_STATES.ALL_GO;
+  signalDebounceTimer = 0;
+  copFacingIndex = 0;
+  targetCameraAngle = 0;
+  currentCameraAngle = 0;
+  turnCooldown = 0;
+  lastFistGesture = 'NONE';
+  gameOver = false;
+  gameRunning = true;
+  appPhase = 'playing';
+
+  startScreen.classList.add('hidden');
+  gameOverScreen.classList.add('hidden');
+  document.getElementById('tutorialScreen').classList.add('hidden');
+  crashFlash.classList.remove('active');
+
+  clock.start();
+  updateHUD();
+  animate();
+}
+
+function triggerGameOver(reason) {
+  gameOver = true;
+  gameRunning = false;
+
+  // Flash
+  crashFlash.classList.add('active');
+  setTimeout(() => crashFlash.classList.remove('active'), 300);
+  setTimeout(() => {
+    crashFlash.classList.add('active');
+    setTimeout(() => crashFlash.classList.remove('active'), 200);
+  }, 400);
+
+  // Update high score
+  if (score > highScoreValue) {
+    highScoreValue = score;
+    localStorage.setItem('trafficCopHighScore', String(highScoreValue));
+  }
+
+  appPhase = 'gameover';
+  gestureHoldTimer = 0;
+
+  // Show game over after a brief delay
+  setTimeout(() => {
+    finalScoreEl.textContent = score;
+    highScoreEl.textContent = 'High Score: ' + highScoreValue;
+    const titleEl = document.getElementById('gameOverTitle');
+    const reasonEl = document.getElementById('gameOverReason');
+    if (reason === 'backup') {
+      titleEl.textContent = '🚗 GRIDLOCK!';
+      reasonEl.textContent = 'Traffic backed up off screen! Keep cars moving!';
+    } else {
+      titleEl.textContent = '💥 CRASH!';
+      reasonEl.textContent = 'Two cars collided at the intersection!';
+    }
+    gameOverScreen.classList.remove('hidden');
+  }, 1000);
+}
+
+function updateHUD() {
+  scoreEl.textContent = 'Score: ' + score;
+  levelEl.textContent = 'Wave ' + wave;
+  carsClearedEl.textContent = 'Cars cleared: ' + carsCleared;
+
+  let signalText = 'ALL GO';
+  let signalColor = '#ffaa00';
+  if (signalState === SIGNAL_STATES.ALL_STOP) {
+    signalText = 'ALL STOP';
+    signalColor = '#ff4444';
+  } else if (signalState === SIGNAL_STATES.EW_GO) {
+    signalText = 'E/W → GO | N/S STOP';
+    signalColor = '#44ff44';
+  } else if (signalState === SIGNAL_STATES.NS_GO) {
+    signalText = 'N/S → GO | E/W STOP';
+    signalColor = '#44ff44';
+  }
+  signalIndicatorEl.textContent = 'Signal: ' + signalText;
+  signalIndicatorEl.style.color = signalColor;
+
+  const facingEl = document.getElementById('facingIndicator');
+  if (facingEl) facingEl.textContent = 'Facing: ' + FACING_NAMES[copFacingIndex];
+}
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+function animate() {
+  if (!gameRunning) {
+    renderer.render(scene, camera);
+    return;
+  }
+
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.05); // cap delta time
+
+  // Update signal with debounce
+  signalDebounceTimer += dt;
+  if (pendingSignal !== signalState && signalDebounceTimer > 0.3) {
+    signalState = pendingSignal;
+    signalDebounceTimer = 0;
+    playWhistle();
+  }
+
+  // Spawn cars
+  spawnTimer += dt;
+  if (spawnTimer >= spawnInterval) {
+    spawnTimer = 0;
+    spawnCars();
+  }
+
+  // Update systems
+  updateCars(dt);
+  checkCollisions();
+  if (gameRunning) checkBackup();
+  updateDifficulty(dt);
+  updateCopAnimation(dt);
+  updateCamera(dt);
+  updateSignalMarkers(Date.now());
+  updateHUD();
+
+  renderer.render(scene, camera);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+initScene();
+renderer.render(scene, camera);
+
+// Start webcam + gesture detection immediately so UI is gesture-driven
+initGestureDetection();
+
+</script>
+</body>
+</html>
