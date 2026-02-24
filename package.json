@@ -4,9 +4,26 @@
   "description": "3D Traffic Cop Game",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node tests.js",
+    "test:e2e": "npx playwright test"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microsoftnorman/traffic-cop.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/microsoftnorman/traffic-cop/issues"
+  },
+  "homepage": "https://github.com/microsoftnorman/traffic-cop#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
   }
 }
