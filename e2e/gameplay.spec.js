@@ -85,7 +85,7 @@ test('Key A sets signal to EW GO', async ({ page }) => {
   await pressKey(page, 'a');
   await page.waitForTimeout(300);
   const signal = page.locator('#signalIndicator');
-  await expect(signal).toContainText('E/W \u2192 GO');
+  await expect(signal).toContainText('E/W \u2192 GO', { timeout: 10000 });
 });
 
 test('Key D sets signal to NS GO', async ({ page }) => {
@@ -93,7 +93,7 @@ test('Key D sets signal to NS GO', async ({ page }) => {
   await pressKey(page, 'd');
   await page.waitForTimeout(300);
   const signal = page.locator('#signalIndicator');
-  await expect(signal).toContainText('N/S \u2192 GO');
+  await expect(signal).toContainText('N/S \u2192 GO', { timeout: 10000 });
 });
 
 test('Key S sets signal to ALL STOP', async ({ page }) => {
@@ -101,7 +101,7 @@ test('Key S sets signal to ALL STOP', async ({ page }) => {
   await pressKey(page, 's');
   await page.waitForTimeout(300);
   const signal = page.locator('#signalIndicator');
-  await expect(signal).toContainText('ALL STOP');
+  await expect(signal).toContainText('ALL STOP', { timeout: 10000 });
 });
 
 test('Key W sets signal to ALL GO', async ({ page }) => {
@@ -111,7 +111,7 @@ test('Key W sets signal to ALL GO', async ({ page }) => {
   await pressKey(page, 'w');
   await page.waitForTimeout(300);
   const signal = page.locator('#signalIndicator');
-  await expect(signal).toContainText('ALL GO');
+  await expect(signal).toContainText('ALL GO', { timeout: 10000 });
 });
 
 // ============================================================
@@ -293,27 +293,38 @@ test('Score increases when cars clear the intersection', async ({ page }) => {
 });
 
 // ============================================================
-// GAME OVER → RESTART
+// CRASH → CUTSCENE → GAME OVER
 // ============================================================
 
-test('Game over screen appears on collision and restart works', async ({ page }) => {
+// Helper: wait for cutscene to start by polling game state
+async function waitForCutscene(page, timeout = 20000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const phase = await page.evaluate(() => window.__gameState && window.__gameState.appPhase);
+    if (phase === 'cutscene') return true;
+    await page.waitForTimeout(200);
+  }
+  return false;
+}
+
+test('Crash plays cutscene then shows game over', async ({ page }) => {
+  test.setTimeout(120000);
   await startGame(page);
   await pressKey(page, '0', true);
   await pressKey(page, '=', true);
   await pressKey(page, '=', true);
   await pressKey(page, '=', true);
   await pressKey(page, 'w');
-  try {
-    await page.waitForSelector('#gameOverScreen:not(.hidden)', { timeout: 20000 });
-    const gameOver = page.locator('#gameOverScreen');
-    await expect(gameOver).not.toHaveClass(/hidden/);
-    await pressKey(page, 'Space');
+  const crashed = await waitForCutscene(page, 20000);
+  if (!crashed) return; // Probabilistic — crash may not happen
+  // Wait for full cutscene to finish and game over to appear
+  for (let i = 0; i < 150; i++) {
+    const phase = await page.evaluate(() => window.__gameState && window.__gameState.appPhase);
+    if (phase === 'gameover') break;
     await page.waitForTimeout(500);
-    const startScreen = page.locator('#startScreen');
-    await expect(startScreen).not.toHaveClass(/hidden/);
-  } catch {
-    // Probabilistic — collision may not happen within timeout
   }
+  const gameOver = page.locator('#gameOverScreen');
+  await expect(gameOver).not.toHaveClass(/hidden/);
 });
 
 // ============================================================

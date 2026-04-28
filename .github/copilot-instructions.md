@@ -2,13 +2,14 @@
 
 ## Overview
 
-3D traffic cop game — a single-file browser game where the player uses webcam hand gestures to direct traffic at an intersection. Built with Three.js + MediaPipe Hands, served by a zero-dependency Node.js server.
+3D traffic cop game — a modular browser game where the player uses webcam hand gestures to direct traffic at an intersection. Built with Three.js + MediaPipe Hands, served by a zero-dependency Node.js server.
 
 ## Build and Test
 
 ```bash
 node server.js        # Serve on http://localhost:8080 (or npm start)
 node tests.js         # Run vehicle mechanics tests (exit code 0 = pass)
+npx playwright test   # Run e2e browser tests (25 tests)
 ```
 
 No `npm install` needed — zero runtime dependencies, all libraries via CDN.
@@ -20,15 +21,39 @@ Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force
 
 ## Architecture
 
-**Single-file game.** All HTML, CSS, and JS live in `index.html` (~3000 lines) as an inline `<script type="module">`. There are no separate JS/CSS files and no build step.
+**Modular ES modules.** HTML/CSS live in `index.html`, game JS is split across ES module files in `js/`. No build step — modules loaded natively via browser `<script type="module">`.
 
-| Component | Description |
-|-----------|-------------|
-| Three.js scene | 3D intersection, cars, cop model, lighting |
-| Car system | Spawn, movement, queuing, collision (AABB) |
-| Gesture detection | MediaPipe Hands → signal state machine |
-| Weather | Rain/snow canvas overlay tied to wave progression |
-| Difficulty | 10 named waves with ramping speed/spawn rate |
+| File | Description |
+|------|-------------|
+| `index.html` | HTML/CSS shell + importmap for Three.js CDN |
+| `js/main.js` | Hub entry point: game flow, main loop, init, callback wiring |
+| `js/constants.js` | All game constants (dimensions, directions, signal states) |
+| `js/state.js` | Single mutable state object shared across modules |
+| `js/audio.js` | Web Audio API procedural sound system |
+| `js/scene.js` | Three.js scene setup, intersection, cop model, buildings |
+| `js/vehicles.js` | Vehicle meshes, spawning, movement, brake lights, blinkers |
+| `js/pedestrians.js` | Pedestrian meshes, ambient peds, bus passengers |
+| `js/collisions.js` | Collision detection, crash effects, emergency vehicles |
+| `js/weather.js` | Rain/snow canvas overlay system |
+| `js/night.js` | Day/night mode with lighting changes |
+| `js/difficulty.js` | Wave progression, difficulty scaling, sidewalk network |
+| `js/gestures.js` | MediaPipe Hands gesture detection + gesture-driven UI |
+| `js/controls.js` | Cop animation, camera, signal markers, keyboard controls |
+
+### Module Dependency Order
+
+```
+constants → state → audio → weather → night → difficulty → scene →
+vehicles → pedestrians → collisions → gestures → controls → main
+```
+
+### State Pattern
+
+All mutable game state lives in a single `state` object exported from `js/state.js`. Modules import `state` and access properties as `state.xxx` (e.g., `state.cars`, `state.score`, `state.signalState`).
+
+### Callback Pattern
+
+For circular dependencies (e.g., `pedestrians.js` needs `triggerGameOver` from `main.js`), modules export a `setCallbacks()` function. `main.js` wires these during init.
 
 ## Conventions
 
@@ -56,8 +81,9 @@ Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force
 
 ## Key Pitfalls
 
-- **Duplicate function declarations** in the module script cause silent failure (no error in browser, entire module doesn't execute). Always check for existing declarations before adding functions.
-- **Constants are mirrored in tests.js** — when changing constants in `index.html`, update `tests.js` too.
-- **No module exports** — tests re-implement core logic as pure functions rather than importing from the game.
+- **Module syntax errors** cause silent failure — the entire module chain stops loading with no visible error. Check brace balance and import paths carefully.
+- **Constants are mirrored in tests.js** — when changing constants in `js/constants.js`, update `tests.js` too.
+- **No module exports to tests** — tests re-implement core logic as pure functions rather than importing from the game modules.
 - **Gesture coordinates are mirrored** — `wrist.x < 0.5` = user's left side due to webcam mirror.
 - **`getUserMedia` requires localhost** — the game must be served via the Node server, not opened as a file.
+- **State mutations** — always use `state.xxx = value`, never reassign destructured state variables locally.

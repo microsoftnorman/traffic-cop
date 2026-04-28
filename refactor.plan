@@ -1,0 +1,438 @@
+# Refactor Plan: Split Monolithic index.html into ES Modules
+#
+# Goal: Break the single 4,615-line <script> block in index.html into
+#        ~12 focused ES module files under js/, without losing any
+#        functionality.  Tests are written and passing BEFORE each
+#        refactoring step, so regressions are caught immediately.
+#
+# Run tests:
+#   node tests.js              (unit tests — 184 tests, 978 assertions today)
+#   npx playwright test        (e2e tests — browser-level gameplay)
+#
+# Current state (pre-refactor):
+#   index.html  — 4,615 lines: HTML/CSS (~525) + inline <script type="module"> (~4,090)
+#   tests.js    — 2,670 lines: 184 tests, re-implements pure logic from index.html
+#   e2e/gameplay.spec.js — Playwright end-to-end tests
+#   server.js   — Zero-dep static file server (already serves .js files)
+#
+# Strategy: "Tests First, Then Extract"
+#   1. Expand unit tests to cover every system that will become its own file
+#   2. Run all tests — confirm green
+#   3. Extract each module one at a time, run all tests after each extraction
+#   4. Update copilot-instructions.md to reflect new architecture
+
+# ============================================================
+# PHASE 0 — PREPARATION
+# ============================================================
+
+## 0.1  Baseline test run
+- Run `node tests.js` — confirm 184 tests, 978 assertions, 0 failures
+- Run `npx playwright test` — confirm all e2e tests pass
+- Commit: "Green baseline before refactor"
+
+## 0.2  Create js/ directory
+- `mkdir js`
+- No code changes yet
+
+# ============================================================
+# PHASE 1 — WRITE PRE-REFACTOR TESTS
+# ============================================================
+#
+# For each module that will be extracted, add/verify test coverage in tests.js
+# BEFORE moving any code.  This creates a safety net.
+#
+# Tests follow the project convention: pure-function re-implementations
+# in tests.js, no DOM/Three.js, using the existing test()/assert() harness.
+#
+# After EVERY batch of new tests: run `node tests.js`, confirm green, commit.
+
+## 1.1  Constants tests (target: js/constants.js)
+- Already covered: DIRECTIONS, SIGNAL_STATES, RIGHT_TURN_DATA are used
+  throughout existing tests
+- Add:
+  - Test ROAD_LENGTH == 70, SPAWN_DIST == 65, EXIT_DIST == 70 consistency
+  - Test CAR_COLORS has 15 entries
+  - Test RIGHT_TURN_DATA keys match DIRECTIONS keys
+  - Test each RIGHT_TURN_DATA entry has required fields (exitDir, cx, cz, a0, a1, r0, r1)
+  - Test LANE_OFFSET + INTERSECTION_SIZE/2 == TURN_RADIUS + 2*LANE_OFFSET (geometry sanity)
+- Run tests, commit: "Add constants integrity tests"
+
+## 1.2  Vehicle data tests (target: js/vehicles.js)
+- Already covered: VEHICLE_TYPES and EMERGENCY_TYPES are in tests.js
+- Add:
+  - Test every VEHICLE_TYPES entry has required fields (name, w, h, l, speedMult, weight)
+  - Test no duplicate vehicle names
+  - Test total weight > 0 (for weighted random selection)
+  - Test NO_TURN_TYPES entries all exist in VEHICLE_TYPES
+  - Test pickVehicleType() returns valid type (re-implement weighted random, verify)
+  - Test BUS_STOP_DIST is between STOP_LINE_DIST and SPAWN_DIST
+- Run tests, commit: "Add vehicle data integrity tests"
+
+## 1.3  Car movement / update tests (target: js/vehicles.js)
+- Already well-covered (stop lines, queuing, through-state, signals, etc.)
+- Add:
+  - Test right-turn arc: car entering turn has state 'turning', follows arc
+  - Test right-turn car exits on perpendicular axis
+  - Test right-turn car rotation changes during arc
+  - Test NO_TURN_TYPES vehicles never get willTurnRight=true
+  - Test bus stop: bus with isBus=true stops at BUS_STOP_DIST, waits, resumes
+  - Test bus stop timer: bus waits between BUS_STOP_DURATION_MIN and MAX
+  - Test bus that already completed busStop does not stop again
+  - Test car blinker state when willTurnRight is true
+- Run tests, commit: "Add right-turn and bus-stop movement tests"
+
+## 1.4  Pedestrian tests (target: js/pedestrians.js)
+- Already covered: basic wait/walk/through/cleared, signal respect
+- Add:
+  - Test pedestrian speed (verify PED_SPEED constant)
+  - Test pedestrian crossing completes in reasonable frame count
+  - Test pedestrian does not move backwards
+  - Test pedestrian position stays within crosswalk bounds (perpAxis)
+- Run tests, commit: "Add pedestrian boundary tests"
+
+## 1.5  Collision detection tests (target: js/collisions.js)
+- Already covered: cross-traffic overlap, same-direction, crashed exclusion,
+  near-miss, pedestrian-pedestrian ignore
+- Add:
+  - Test car-pedestrian collision (car in intersection + ped in crosswalk)
+  - Test right-turning car collision with cross-traffic
+  - Test AABB overlap function directly with edge cases (touching, 1-unit overlap)
+  - Test near-miss threshold values
+- Run tests, commit: "Add collision edge-case tests"
+
+## 1.6  Difficulty / wave tests (target: js/difficulty.js)
+- Already covered: wave data, speed ramp, spawn interval, weather triggers
+- Add:
+  - Test getWaveData returns correct data for waves 1–10
+  - Test getWaveData for wave > 10 (overflow behavior)
+  - Test updateDifficulty wave transition timing (every 18s)
+  - Test night mode triggers at wave 5
+  - Test all WAVE_DATA entries have name, tip, emoji
+- Run tests, commit: "Add difficulty/wave completeness tests"
+
+## 1.7  Gesture mapping tests (target: js/gestures.js)
+- Already covered: no hands, both hands, left/right, center
+- Add:
+  - Test isFist function (fingers curled = fist)
+  - Test cop rotation: fist-left rotates cop left, fist-right rotates right
+  - Test turn cooldown prevents rapid turns
+  - Test FACING_ANGLES has 4 entries, FACING_NAMES has 4 entries
+  - Test copFacingIndex wraps around (3→0, 0→3)
+- Run tests, commit: "Add gesture and cop rotation tests"
+
+## 1.8  Night mode tests (target: js/night.js)
+- Not currently tested in unit tests
+- Add:
+  - Test setNightMode(true) → isNightMode === true
+  - Test setNightMode(false) → isNightMode === false
+  - Test setNightMode is idempotent (calling twice with same value is safe)
+  - (Night mode is mostly visual/Three.js; only test the state flag and
+    updateCarNightLights logic as pure function)
+- Run tests, commit: "Add night mode state tests"
+
+## 1.9  Weather tests (target: js/weather.js)
+- Not currently unit-tested (tested via difficulty wave tests)
+- Add:
+  - Test setWeather('rain', 0.5) sets weatherType and weatherIntensity
+  - Test setWeather('clear', 0) resets both
+  - Test setWeather('snow', 1.0)
+  - (Weather rendering is canvas-based; only test state transitions)
+- Run tests, commit: "Add weather state tests"
+
+## 1.10  Audio function tests (target: js/audio.js)
+- Not currently unit-tested (browser-only Web Audio API)
+- Add:
+  - Test SOUND_FILES object has expected keys
+  - Test playHonk/playAngryHonk select correct sound names for vehicle types
+    (re-implement the vehicle→sound mapping logic as a pure function)
+  - (Actual audio playback cannot be tested in Node; only test mapping logic)
+- Run tests, commit: "Add audio mapping tests"
+
+## 1.11  Game flow tests (target: js/main.js)
+- Covered by e2e tests (start → tutorial → playing → game over)
+- Add unit tests:
+  - Test startGame resets all state variables to initial values
+  - Test triggerGameOver sets gameOver=true, gameRunning=false
+  - Test updateHUD only updates DOM when values change (test the dirty-check logic)
+  - (These are re-implemented as pure functions testing the state transitions)
+- Run tests, commit: "Add game flow state tests"
+
+## 1.12  Final pre-refactor gate
+- Run ALL tests: `node tests.js` and `npx playwright test`
+- Every test must pass
+- Commit: "All pre-refactor tests green — ready to extract modules"
+- Tag: `git tag pre-refactor`
+
+# ============================================================
+# PHASE 2 — EXTRACT MODULES (one file at a time)
+# ============================================================
+#
+# Order: constants first (no dependencies), then leaf modules, then
+# modules that import from earlier ones, then main.js last.
+#
+# After EVERY extraction: run `node tests.js` + `npx playwright test`.
+# If anything fails, fix before moving to the next module.
+
+## Target file structure:
+#
+#   js/
+#     constants.js    — all constants, DIRECTIONS, SIGNAL_STATES, WAVE_DATA, etc.
+#     state.js        — mutable game state object (single `state` export)
+#     audio.js        — Web Audio: ensureAudio, playSound, playHonk, etc.
+#     scene.js        — Three.js setup: initScene, buildIntersection, buildCop, etc.
+#     vehicles.js     — VEHICLE_TYPES, createVehicle, updateCars, isCarSignaledToStop
+#     pedestrians.js  — createPedestrian, updatePedestrians, ambient peds, bus passengers
+#     collisions.js   — checkCollisions, showCrashEffect, showNearMissWarning
+#     night.js        — setNightMode, updateCarNightLights
+#     weather.js      — initWeather, setWeather, updateWeather
+#     difficulty.js   — WAVE_DATA, getWaveData, updateDifficulty, showWaveAnnouncement
+#     gestures.js     — initGestureDetection, onGestureResults, updateGestureUI
+#     controls.js     — keyboard handlers, cop rotation, camera update
+#     main.js         — game loop (animate), startGame, triggerGameOver, init
+#   index.html        — HTML + CSS only (~525 lines), <script type="module" src="js/main.js">
+
+## 2.1  Extract js/constants.js
+- Move: All `const` declarations from CONSTANTS section (lines 534–580)
+          ROAD_WIDTH, ROAD_LENGTH, INTERSECTION_SIZE, CAR_LENGTH, CAR_WIDTH,
+          CAR_HEIGHT, STOP_LINE_DIST, CROSSWALK_DIST, SPAWN_DIST, EXIT_DIST,
+          LANE_OFFSET, RIGHT_TURN_CHANCE, TURN_RADIUS, NO_TURN_TYPES,
+          BUS_STOP_DIST, BUS_STOP_DURATION_MIN/MAX, DIRECTIONS, RIGHT_TURN_DATA,
+          SIGNAL_STATES, CAR_COLORS
+- Export: All as named exports
+- In index.html: Replace the constants block with
+    `import { ROAD_WIDTH, ... } from './js/constants.js';`
+- Run tests + e2e
+- Commit: "Extract js/constants.js"
+
+## 2.2  Extract js/state.js
+- Move: All `let` declarations from GAME STATE section (lines 585–648)
+- Export: A single mutable `state` object with all properties
+- In index.html: `import { state } from './js/state.js';`
+  Replace all bare references (e.g., `cars` → `state.cars`, `score` → `state.score`)
+- IMPORTANT: This is the biggest mechanical change. Many functions read/write
+  these variables.  The `state` object pattern lets modules import + mutate
+  without circular deps.
+- Run tests + e2e
+- Commit: "Extract js/state.js"
+
+## 2.3  Extract js/audio.js
+- Move: Lines 651–798 (AUDIO section)
+  Functions: ensureAudio, playSound, playWhistle, playHonk, playAngryHonk,
+             playCrash, playScore, startSiren, updateSiren, stopSiren
+  Data: SOUND_FILES, soundBuffers, MAX_CONCURRENT, activeSources, audioCtx
+- Imports: (none from other modules — self-contained)
+- Export: All audio functions + preloadSounds
+- In index.html: `import { playHonk, playWhistle, ... } from './js/audio.js';`
+- Run tests + e2e
+- Commit: "Extract js/audio.js"
+
+## 2.4  Extract js/difficulty.js
+- Move: Lines 4053–4098 (DIFFICULTY section)
+  Data: WAVE_DATA, waveAnnounceTimeout
+  Functions: getWaveData, showWaveAnnouncement, updateDifficulty
+- Imports: constants (from js/constants.js), state (from js/state.js),
+           setWeather (from js/weather.js — circular dep issue, see note),
+           setNightMode (from js/night.js — same issue)
+- NOTE: updateDifficulty calls setWeather and setNightMode. Extract weather
+  and night BEFORE difficulty, or pass them as callbacks.
+  → Preferred: extract weather + night first (2.5, 2.6), then difficulty (2.7)
+- Adjust extraction order accordingly (see 2.5–2.7 below)
+
+## 2.5  Extract js/weather.js
+- Move: Lines 3913–4051 (WEATHER section)
+  Functions: initWeather, resizeWeatherCanvas, setWeather, updateWeather
+  State: weatherCanvas, weatherCtx (move to local module state, not in state.js)
+- Imports: state (for weatherType, weatherIntensity, weatherParticles)
+- Export: initWeather, setWeather, updateWeather
+- Run tests + e2e
+- Commit: "Extract js/weather.js"
+
+## 2.6  Extract js/night.js
+- Move: Lines 3763–3911 (NIGHT MODE section)
+  Functions: setNightMode, updateCarNightLights
+- Imports: state (for isNightMode, streetLights, etc.), THREE
+- Export: setNightMode, updateCarNightLights
+- Run tests + e2e
+- Commit: "Extract js/night.js"
+
+## 2.7  Extract js/difficulty.js (now safe — weather + night extracted)
+- Move: WAVE_DATA, getWaveData, showWaveAnnouncement, updateDifficulty
+- Imports: constants, state, setWeather (from weather.js), setNightMode (from night.js)
+- Export: getWaveData, updateDifficulty, WAVE_DATA
+- Run tests + e2e
+- Commit: "Extract js/difficulty.js"
+
+## 2.8  Extract js/collisions.js
+- Move: Lines 3581–3761 (COLLISION section + crash effects)
+  Functions: checkCollisions, showNearMissWarning, showCrashEffect
+- Imports: state, constants, audio (playCrash), triggerGameOver (from main — 
+  circular dep: pass as callback or use events)
+- Strategy: checkCollisions returns collision result; main.js calls triggerGameOver
+- Export: checkCollisions, showCrashEffect, showNearMissWarning
+- Run tests + e2e
+- Commit: "Extract js/collisions.js"
+
+## 2.9  Extract js/vehicles.js
+- Move: Lines 1605–2846 (VEHICLE SYSTEM)
+  Data: VEHICLE_TYPES, EMERGENCY_TYPES
+  Functions: pickVehicleType, getSharedCarMat, createVehicle, all buildVehicle*
+             functions, spawnCars, spawnEmergencyVehicle, updateCars,
+             isCarSignaledToStop, updateBrakeLights, updateBlinkers
+- Imports: constants, state, THREE, mergeGeometries, audio (playScore), night (updateCarNightLights)
+- Export: VEHICLE_TYPES, createVehicle, updateCars, isCarSignaledToStop,
+         updateBrakeLights, updateBlinkers, spawnCars
+- This is the largest extraction (~1,240 lines)
+- Run tests + e2e
+- Commit: "Extract js/vehicles.js"
+
+## 2.10  Extract js/pedestrians.js
+- Move: Lines 2848–3527 (PEDESTRIAN SYSTEM + ambient peds + bus passengers)
+  Functions: createPedestrian, pickPedType, buildPersonGeos, updatePedestrian
+             (inner logic), spawnAmbientPed, generateAmbientPedRoute,
+             createBusPassengerMesh, spawnBusPassengers, updateBusPassengers,
+             removeBusPassengers, isAmbientCrossingSafe, updateAmbientPeds
+- Imports: constants, state, THREE, mergeGeometries
+- Export: createPedestrian, updateAmbientPeds, spawnAmbientPed
+- Run tests + e2e
+- Commit: "Extract js/pedestrians.js"
+
+## 2.11  Extract js/scene.js
+- Move: Lines 800–1603 (THREE.JS SCENE SETUP)
+  Functions: initScene, makeCanvasTexture, buildIntersection, buildCop,
+             buildBuildings, buildEnvironment
+- Imports: constants, state, THREE, mergeGeometries
+- Export: initScene (which populates state.scene, state.camera, etc.)
+- Run tests + e2e
+- Commit: "Extract js/scene.js"
+
+## 2.12  Extract js/gestures.js
+- Move: Lines 4489–4683 (GESTURE DETECTION + GESTURE UI)
+  Functions: initGestureDetection, isFist, onGestureResults, rotateCop,
+             updateGestureUI, updateRing, startTutorial, updateTutorialUI,
+             completeTutorialStep
+- Imports: state, constants, startGame (from main)
+- Export: initGestureDetection, updateGestureUI
+- Run tests + e2e
+- Commit: "Extract js/gestures.js"
+
+## 2.13  Extract js/controls.js
+- Move: Lines 4685–4793 (KEYBOARD CONTROLS) + camera/cop animation
+  Functions: keyboard event listeners, updateCopAnimation, updateCamera,
+             lerpAngle, updateSignalMarkers
+- Imports: state, constants, THREE, startGame/resetToStartScreen (from main)
+- Export: updateCopAnimation, updateCamera, updateSignalMarkers
+- Run tests + e2e
+- Commit: "Extract js/controls.js"
+
+## 2.14  Create js/main.js — Final assembly
+- Move: Lines 4795–end (GAME FLOW + MAIN LOOP + INIT)
+  Functions: resetToStartScreen, startGame, triggerGameOver, updateHUD, animate
+  Init calls: initScene, initWeather, preloadSounds, initGestureDetection
+- Imports: Everything from the extracted modules
+- Export: startGame, triggerGameOver, resetToStartScreen (for gestures/controls)
+- Run tests + e2e
+- Commit: "Extract js/main.js — all game logic out of index.html"
+
+## 2.15  Clean index.html
+- Remove the entire <script type="module"> block (now empty)
+- Replace with: `<script type="module" src="js/main.js"></script>`
+- Keep: all HTML, CSS, importmap, MediaPipe CDN scripts
+- Run tests + e2e
+- Commit: "index.html is now HTML/CSS only — all JS in js/"
+
+# ============================================================
+# PHASE 3 — UPDATE TESTS TO USE SHARED CONSTANTS
+# ============================================================
+
+## 3.1  Refactor tests.js to import from js/constants.js
+- Since tests.js runs in Node (CommonJS), and js/constants.js is ESM:
+  Option A: Keep mirrored constants in tests.js (current approach — simplest)
+  Option B: Convert tests.js to ESM (rename to tests.mjs or add "type":"module")
+  Option C: Create a js/constants.cjs that both can use
+- RECOMMENDED: Option A for now (least disruption).  Phase 3 is optional.
+  The mirrored constants are a small maintenance cost vs. the risk of
+  breaking the test harness.
+- If Option B: update package.json, update `node tests.mjs` command
+- Run tests + e2e
+- Commit: "Refactor tests to share constants (optional)"
+
+# ============================================================
+# PHASE 4 — UPDATE DOCUMENTATION
+# ============================================================
+
+## 4.1  Update .github/copilot-instructions.md
+- Change "Single-file game" to "Multi-file ES module game"
+- Update Architecture table with new file list
+- Remove the "single-file" pitfall
+- Add note: "Each js/ file is an ES module with named exports"
+- Add note: "state.js holds all mutable game state in one object"
+- Update the Key Pitfalls section
+
+## 4.2  Update .github/instructions/testing.instructions.md
+- Update: "Game code lives in js/ as ES modules"
+- Keep: "Extract function under test as standalone pure function in tests.js"
+- Keep: "Mirror constants" or update if Phase 3 Option B was taken
+
+## 4.3  Final commit
+- Commit: "Update docs for multi-file architecture"
+- Tag: `git tag post-refactor`
+
+# ============================================================
+# DEPENDENCY GRAPH (extraction order rationale)
+# ============================================================
+#
+# constants.js ← (nothing — leaf)
+# state.js     ← constants.js
+# audio.js     ← (self-contained, no game imports)
+# weather.js   ← state.js, constants.js
+# night.js     ← state.js, constants.js, THREE
+# difficulty.js← state.js, constants.js, weather.js, night.js
+# collisions.js← state.js, constants.js, audio.js
+# vehicles.js  ← state.js, constants.js, audio.js, night.js, THREE
+# pedestrians.js← state.js, constants.js, THREE
+# scene.js     ← state.js, constants.js, THREE
+# gestures.js  ← state.js, constants.js, main.js (circular — use late binding)
+# controls.js  ← state.js, constants.js, main.js (circular — use late binding)
+# main.js      ← everything
+#
+# Circular dependency resolution:
+#   gestures.js and controls.js need startGame/resetToStartScreen from main.js
+#   main.js needs initGestureDetection from gestures.js
+#   → Solution: main.js passes callbacks after import
+#     e.g., import { setCallbacks } from './gestures.js';
+#           setCallbacks({ startGame, resetToStartScreen });
+#   This avoids circular `import` at module evaluation time.
+
+# ============================================================
+# ROLLBACK PLAN
+# ============================================================
+#
+# Every extraction step is a separate commit.  If something breaks:
+#   git revert HEAD      — undo last extraction
+#   node tests.js        — verify green
+#   npx playwright test  — verify e2e
+#
+# If the whole refactor needs to be abandoned:
+#   git reset --hard pre-refactor
+#
+# The pre-refactor tag preserves the known-good single-file state.
+
+# ============================================================
+# ESTIMATED FILE SIZES (post-refactor)
+# ============================================================
+#
+#   index.html      ~525 lines  (HTML + CSS only)
+#   js/constants.js  ~65 lines
+#   js/state.js      ~70 lines
+#   js/audio.js     ~150 lines
+#   js/scene.js     ~810 lines  (largest — Three.js geometry builders)
+#   js/vehicles.js ~1,240 lines (second largest — vehicle builders + update)
+#   js/pedestrians.js ~680 lines
+#   js/collisions.js  ~180 lines
+#   js/night.js     ~150 lines
+#   js/weather.js   ~140 lines
+#   js/difficulty.js ~120 lines
+#   js/gestures.js  ~200 lines
+#   js/controls.js  ~120 lines
+#   js/main.js      ~310 lines
+#   tests.js        ~2,900 lines (expanded with new tests from Phase 1)

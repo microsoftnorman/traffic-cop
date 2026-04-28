@@ -13,9 +13,9 @@ applyTo: "**/tests*.js"
 
 ## Extracting Game Logic
 
-- Game code lives inline in `index.html` inside a `<script type="module">`
+- Game code lives in ES module files under `js/` (e.g., `js/vehicles.js`, `js/constants.js`)
 - Extract the function under test into `tests.js` as a standalone pure function — no DOM, no Three.js, no browser APIs
-- Mirror all constants (STOP_LINE_DIST, SPAWN_DIST, etc.) from the game source at the top of the test file
+- Mirror all constants (STOP_LINE_DIST, SPAWN_DIST, etc.) from `js/constants.js` at the top of the test file
 - Mock car objects with `makeCar(dirKey, posAlongAxis, opts)` — use plain `{ x, y, z }` for mesh positions, not Three.js objects
 
 ## Writing Tests
